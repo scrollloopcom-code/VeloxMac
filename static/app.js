@@ -284,22 +284,35 @@ async function checkCookieStatus() {
     const resp = await fetch('/api/cookies/status');
     const data = await resp.json();
     const dot = document.getElementById('cookieDot');
+    const modalDot = document.getElementById('modalCookieDot');
     const label = document.getElementById('cookieLabel');
     const statusText = document.getElementById('currentStatusText');
     const clearBtn = document.getElementById('clearCookieBtn');
 
     if (data.has_cookies) {
-      dot.style.background = 'var(--accent-green)';
-      dot.style.boxShadow = '0 0 8px var(--accent-green)';
-      label.textContent = 'Cookies: Active';
-      statusText.innerHTML = `✅ <strong>Cookies Active</strong> &bull; Size: ${Math.round(data.size / 1024)} KB`;
-      clearBtn.style.display = 'inline-block';
+      if (dot) {
+        dot.style.background = 'var(--accent-green)';
+        dot.style.boxShadow = '0 0 8px var(--accent-green)';
+      }
+      if (modalDot) {
+        modalDot.style.background = 'var(--accent-green)';
+        modalDot.style.boxShadow = '0 0 8px var(--accent-green)';
+      }
+      if (label) label.textContent = 'Cookies: Active';
+      if (statusText) statusText.innerHTML = `✅ <strong>YouTube Session Active</strong> &bull; Size: ${(data.size / 1024).toFixed(1)} KB (BotGuard Bypassed)`;
+      if (clearBtn) clearBtn.style.display = 'inline-block';
     } else {
-      dot.style.background = '#f39c12';
-      dot.style.boxShadow = 'none';
-      label.textContent = 'Cookies: None';
-      statusText.innerHTML = '⚠️ <strong>No cookies configured</strong> (YouTube may block requests)';
-      clearBtn.style.display = 'none';
+      if (dot) {
+        dot.style.background = '#f39c12';
+        dot.style.boxShadow = 'none';
+      }
+      if (modalDot) {
+        modalDot.style.background = '#f39c12';
+        modalDot.style.boxShadow = 'none';
+      }
+      if (label) label.textContent = 'Cookies: None';
+      if (statusText) statusText.innerHTML = '⚠️ <strong>No session configured</strong> (YouTube BotGuard challenge may block requests)';
+      if (clearBtn) clearBtn.style.display = 'none';
     }
   } catch (e) {}
 }

@@ -9,13 +9,8 @@
 </head>
 <body>
   <div class="mac-window">
-    <!-- macOS Titlebar -->
+    <!-- macOS Native Unified Header Toolbar -->
     <header class="titlebar">
-      <div class="window-controls">
-        <span class="control close"></span>
-        <span class="control minimize"></span>
-        <span class="control maximize"></span>
-      </div>
       <div class="app-identity">
         <div class="logo-mark">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
@@ -24,13 +19,11 @@
         </div>
         <div class="app-title-group">
           <span class="app-name">VeloxMac</span>
-          <span class="version-tag">PRO TURBO</span>
+          <span class="version-tag">PRO DESKTOP</span>
         </div>
       </div>
+      
       <div class="system-status">
-        <a href="/api/app/download-dmg" download="VeloxMac-v1.0.dmg" class="status-pill dmg-pill" style="text-decoration:none;" title="Download Native macOS App (.dmg)">
-          <span class="dot" style="background:#2ecc71;"></span> 🍏 Get Mac App (.dmg)
-        </a>
         <button class="status-pill sync-pill" id="quickSyncBtn" title="1-Click YouTube Login & Cookie Sync">
           <span class="dot sync-dot"></span> ⚡ 1-Click Sync
         </button>
@@ -142,81 +135,88 @@
     </main>
   </div>
 
-  <!-- Cookie Manager Modal -->
+  <!-- Cookie Manager Modal (Desktop Preferences Dialog) -->
   <div class="modal-backdrop" id="cookieModal" style="display: none;">
-    <div class="modal-card">
+    <div class="modal-card desktop-prefs-card">
       <div class="modal-header">
         <div class="modal-title-group">
           <span class="modal-icon">🍪</span>
-          <h3 class="modal-title">YouTube Cookie Manager</h3>
+          <div>
+            <h3 class="modal-title">YouTube Session & Cookie Settings</h3>
+            <span class="modal-subtitle">Bypass YouTube BotGuard challenge by linking your browser session</span>
+          </div>
         </div>
         <button class="modal-close-btn" id="closeCookieModal">&times;</button>
       </div>
 
-      <div class="modal-body">
-        <p class="modal-desc">
-          YouTube blocks downloads on certain IPs with a <em>"Sign in to confirm you’re not a bot"</em> challenge. Adding your browser cookies bypasses BotGuard for all 4K/1080p videos and clipping.
-        </p>
-
-        <!-- Method 1: VeloxMac Chrome/Brave Extension (Zero Typing / No Password Needed!) -->
-        <div class="cookie-method-card featured">
-          <div class="method-header-flex">
-            <span class="method-badge">EASIEST • NO PASSWORDS NEEDED</span>
+      <div class="modal-body desktop-modal-body">
+        <!-- Live Status Bar -->
+        <div class="cookie-status-banner" id="cookieStatusBanner">
+          <div class="status-indicator-group">
+            <span class="dot" id="modalCookieDot"></span>
+            <span class="status-summary" id="currentStatusText">Checking session...</span>
           </div>
-          <div class="method-title">🧩 VeloxMac Chrome & Brave Extension</div>
-          <p class="method-sub">
-            Since you are <strong>already logged into YouTube</strong> in your browser, you don't have to re-type passwords! Use our custom extension to sync cookies to VeloxMac in 1 click:
-          </p>
-          <div class="extension-actions-row">
-            <button type="button" class="sync-large-btn" id="openExtFolderBtn" style="margin: 0; padding: 10px 16px; font-size: 13px;">
-              📂 Open Extension Folder in Finder
-            </button>
-            <a href="/api/extension/download" download="VeloxMac-Extension.zip" class="upload-cookie-btn" style="text-decoration: none; padding: 10px 14px; font-size: 12.5px;">
-              📥 Download .ZIP
-            </a>
-          </div>
-          <div class="extension-steps">
-            <div class="step-item"><span class="step-num">1</span> Go to <code>chrome://extensions</code> (or <code>brave://extensions</code>)</div>
-            <div class="step-item"><span class="step-num">2</span> Turn on <strong>Developer mode</strong> (top right switch)</div>
-            <div class="step-item"><span class="step-num">3</span> Drag & drop the <strong>extension</strong> folder into Chrome/Brave!</div>
-            <div class="step-item"><span class="step-num">4</span> Click the extension icon on YouTube &rarr; <strong>"⚡ 1-Click Sync to VeloxMac"</strong></div>
-          </div>
-        </div>
-
-        <!-- Method 2: 1-Click Native WebKit Window -->
-        <div class="cookie-method-card">
-          <div class="method-title">Option B: Native macOS YouTube Sign-In Window</div>
-          <p class="method-sub">
-            Opens an Apple WebKit window to YouTube. Sign in to your account and click <strong>"Save Cookies & Close"</strong>.
-          </p>
-          <button type="button" class="upload-cookie-btn" id="modalOneClickSyncBtn" style="padding: 10px 14px;">
-            <span class="btn-spinner" id="modalSyncSpinner" style="display: none;"></span>
-            <span id="modalSyncBtnText">⚡ Open Native WebKit Window</span>
+          <button type="button" class="clear-cookie-btn" id="clearCookieBtn" style="display: none;">
+            🗑️ Clear Saved Session
           </button>
         </div>
 
-        <!-- Method 2: File Upload -->
-        <div class="cookie-method-card">
-          <div class="method-title">Option B: Upload cookies.txt</div>
-          <p class="method-sub">Export using the Chrome/Brave extension <strong>"Get cookies.txt locally"</strong>.</p>
-          <input type="file" id="cookieFileInput" accept=".txt" style="display: none;">
-          <button type="button" class="upload-cookie-btn" id="selectCookieFileBtn">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-            <span>Choose cookies.txt File</span>
-          </button>
-        </div>
+        <!-- 2-Column Desktop Grid -->
+        <div class="desktop-cookie-grid">
+          <!-- Column 1: Browser Extension (Recommended) -->
+          <div class="cookie-method-card featured desktop-col">
+            <div class="method-header-flex">
+              <span class="method-badge">RECOMMENDED • FASTEST</span>
+            </div>
+            <div class="method-title">🧩 Brave & Chrome Extension Bridge</div>
+            <p class="method-sub">
+              Since you are <strong>already logged into YouTube</strong> in your browser, no passwords needed! Transfer your session to VeloxMac in 1 click:
+            </p>
 
-        <!-- Method 3: Paste Cookie String -->
-        <div class="cookie-method-card">
-          <div class="method-title">Option C: Paste Cookie Text / document.cookie</div>
-          <p class="method-sub">Go to youtube.com &rarr; Press <kbd>Cmd+Option+J</kbd> &rarr; type <code>copy(document.cookie)</code> &rarr; Paste here:</p>
-          <textarea id="cookieTextInput" rows="3" placeholder="Paste Netscape cookie format or document.cookie string here (e.g. VISITOR_INFO1_LIVE=...; PREF=...)"></textarea>
-          <button type="button" class="save-cookie-btn" id="saveCookieTextBtn">Save & Apply Cookies</button>
-        </div>
+            <div class="extension-actions-row">
+              <button type="button" class="sync-large-btn" id="openExtFolderBtn">
+                📂 Open Extension in Finder
+              </button>
+              <a href="/api/extension/download" download="VeloxMac-Extension.zip" class="upload-cookie-btn" style="text-decoration:none;">
+                📥 Download .ZIP
+              </a>
+            </div>
 
-        <div class="cookie-current-status" id="cookieCurrentStatusBox">
-          <span id="currentStatusText">Checking cookie status...</span>
-          <button type="button" class="clear-cookie-btn" id="clearCookieBtn" style="display: none;">Clear Cookies</button>
+            <div class="extension-steps">
+              <div class="step-item"><span class="step-num">1</span> Go to <code>chrome://extensions</code> or <code>brave://extensions</code></div>
+              <div class="step-item"><span class="step-num">2</span> Turn on <strong>Developer mode</strong> (top right switch)</div>
+              <div class="step-item"><span class="step-num">3</span> Drag & drop the <strong>extension</strong> folder into the browser</div>
+              <div class="step-item"><span class="step-num">4</span> On YouTube, click the Velox extension &rarr; <strong>"⚡ 1-Click Sync"</strong></div>
+            </div>
+          </div>
+
+          <!-- Column 2: In-App Sign-In & File Import -->
+          <div class="desktop-col right-col">
+            <!-- Native Login Card -->
+            <div class="cookie-method-card">
+              <div class="method-title">⚡ Option B: In-App Sign-In Window</div>
+              <p class="method-sub">
+                Opens an Apple WebKit window to YouTube. Sign in once, then click "Save Cookies & Close".
+              </p>
+              <button type="button" class="upload-cookie-btn primary" id="modalOneClickSyncBtn" style="width: 100%;">
+                <span class="btn-spinner" id="modalSyncSpinner" style="display: none;"></span>
+                <span id="modalSyncBtnText">🔑 Open YouTube Sign-In Window</span>
+              </button>
+            </div>
+
+            <!-- Manual File / Paste Card -->
+            <div class="cookie-method-card">
+              <div class="method-title">📁 Option C: Import / Paste cookies.txt</div>
+              <div class="manual-cookie-tabs">
+                <input type="file" id="cookieFileInput" accept=".txt" style="display: none;">
+                <button type="button" class="upload-cookie-btn" id="selectCookieFileBtn" style="margin-bottom: 8px; width: 100%;">
+                  📂 Choose cookies.txt File
+                </button>
+                <textarea id="cookieTextInput" rows="2" placeholder="Or paste Netscape cookie string here..."></textarea>
+                <button type="button" class="save-cookie-btn" id="saveCookieTextBtn" style="margin-top: 6px; width: 100%;">Save Text Cookies</button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
