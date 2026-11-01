@@ -105,8 +105,12 @@ def build():
 
     launcher = f"""#!/bin/bash
 PROJECT_DIR="{base_dir}"
+PYTHON_BIN="$PROJECT_DIR/.venv/bin/python3"
+
 cd "$PROJECT_DIR" || exit 1
-exec .venv/bin/python3 desktop.py
+export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
+
+exec "$PYTHON_BIN" desktop.py
 """
     launcher_path = os.path.join(macos_dir, "VeloxMac")
     with open(launcher_path, "w") as f:
