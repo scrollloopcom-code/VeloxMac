@@ -1,0 +1,23 @@
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Temporary downloads & user state
+downloads/
+downloads.json
+cookies.txt
+*.cookie
+*.txt
+
+# Build artifacts & DMG
+build/
+dist/
+*.dmg
+*.zip
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride

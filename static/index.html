@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VeloxMac — Next-Gen Media & IDM Downloader</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2300f2fe'><path d='M12 2L2 12h5v8h10v-8h5L12 2z'/></svg>">
+</head>
+<body>
+  <div class="mac-window">
+    <!-- macOS Titlebar -->
+    <header class="titlebar">
+      <div class="window-controls">
+        <span class="control close"></span>
+        <span class="control minimize"></span>
+        <span class="control maximize"></span>
+      </div>
+      <div class="app-identity">
+        <div class="logo-mark">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div class="app-title-group">
+          <span class="app-name">VeloxMac</span>
+          <span class="version-tag">PRO TURBO</span>
+        </div>
+      </div>
+      <div class="system-status">
+        <a href="/api/app/download-dmg" download="VeloxMac-v1.0.dmg" class="status-pill dmg-pill" style="text-decoration:none;" title="Download Native macOS App (.dmg)">
+          <span class="dot" style="background:#2ecc71;"></span> 🍏 Get Mac App (.dmg)
+        </a>
+        <button class="status-pill sync-pill" id="quickSyncBtn" title="1-Click YouTube Login & Cookie Sync">
+          <span class="dot sync-dot"></span> ⚡ 1-Click Sync
+        </button>
+        <button class="status-pill cookie-pill" id="cookieStatusBtn" style="cursor:pointer;" title="Configure YouTube Cookies">
+          <span class="dot" id="cookieDot" style="background:#f39c12"></span> <span id="cookieLabel">Cookies: None</span>
+        </button>
+        <span class="status-pill ffmpeg-pill" id="ffmpegStatus">
+          <span class="dot active"></span> FFmpeg Muxer
+        </span>
+        <span class="status-pill conn-pill" id="wsStatus">
+          <span class="dot active"></span> Connected
+        </span>
+      </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <main class="content-area">
+      <!-- Hero URL Inspector Section -->
+      <section class="hero-section">
+        <div class="hero-badge">ACCELERATED MEDIA & MULTI-THREADED SEGMENTED DOWNLOADER</div>
+        <h1 class="hero-heading">Paste Any Media or Direct Download Link</h1>
+        <p class="hero-subtext">Direct IDM Multi-connection HTTP Range engine + 4K YouTube, TikTok, Instagram, Facebook, and Twitter/X extractor with native macOS FFmpeg post-processing.</p>
+
+        <form class="url-input-container" id="inspectForm">
+          <div class="input-glow-wrapper">
+            <div class="input-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" stroke-linecap="round"/>
+                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <input 
+              type="text" 
+              id="urlInput" 
+              placeholder="Paste media link or file URL (e.g. YouTube, TikTok, DMG, ZIP)..." 
+              autocomplete="off" 
+              spellcheck="false"
+              required
+            >
+            <button type="button" class="paste-btn" id="pasteBtn" title="Paste from Clipboard">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>
+                <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
+              </svg>
+              <span>Paste</span>
+            </button>
+            <button type="submit" class="submit-btn" id="inspectBtn">
+              <span class="btn-text">Analyze Link</span>
+              <span class="spinner" style="display: none;"></span>
+            </button>
+          </div>
+        </form>
+
+        <!-- Supported Platforms Bar -->
+        <div class="supported-tags">
+          <span class="tag">YouTube 4K</span>
+          <span class="tag">TikTok No-Watermark</span>
+          <span class="tag">Instagram Reels</span>
+          <span class="tag">Twitter / X</span>
+          <span class="tag">Facebook Video</span>
+          <span class="tag">Direct DMG / ZIP / ISO (IDM 8-16x)</span>
+        </div>
+      </section>
+
+      <!-- Inspection Results Drawer -->
+      <section class="inspect-results-drawer" id="inspectResults" style="display: none;">
+        <!-- Dynamic content rendered by app.js -->
+      </section>
+
+      <!-- Downloads Dashboard -->
+      <section class="downloads-dashboard">
+        <div class="dashboard-header">
+          <div class="tabs">
+            <button class="tab-btn active" data-tab="active">
+              Active Downloads <span class="badge" id="activeBadge">0</span>
+            </button>
+            <button class="tab-btn" data-tab="completed">
+              Completed Library <span class="badge" id="completedBadge">0</span>
+            </button>
+          </div>
+          <div class="folder-action">
+            <button class="finder-btn" id="openDownloadsFolder">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+              </svg>
+              <span>Downloads: ~/Downloads/VeloxDownloads</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Active Jobs Container -->
+        <div class="jobs-list" id="activeJobsContainer">
+          <div class="empty-state" id="activeEmpty">
+            <div class="empty-icon">⚡️</div>
+            <h3>No Active Downloads</h3>
+            <p>Paste a video or direct file URL above to initiate an accelerated download.</p>
+          </div>
+        </div>
+
+        <!-- Completed Jobs Container -->
+        <div class="jobs-list" id="completedJobsContainer" style="display: none;">
+          <div class="empty-state" id="completedEmpty">
+            <div class="empty-icon">📁</div>
+            <h3>No Completed Downloads Yet</h3>
+            <p>Your finished downloads and muxed media files will be organized here.</p>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Cookie Manager Modal -->
+  <div class="modal-backdrop" id="cookieModal" style="display: none;">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <span class="modal-icon">🍪</span>
+          <h3 class="modal-title">YouTube Cookie Manager</h3>
+        </div>
+        <button class="modal-close-btn" id="closeCookieModal">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <p class="modal-desc">
+          YouTube blocks downloads on certain IPs with a <em>"Sign in to confirm you’re not a bot"</em> challenge. Adding your browser cookies bypasses BotGuard for all 4K/1080p videos and clipping.
+        </p>
+
+        <!-- Method 1: VeloxMac Chrome/Brave Extension (Zero Typing / No Password Needed!) -->
+        <div class="cookie-method-card featured">
+          <div class="method-header-flex">
+            <span class="method-badge">EASIEST • NO PASSWORDS NEEDED</span>
+          </div>
+          <div class="method-title">🧩 VeloxMac Chrome & Brave Extension</div>
+          <p class="method-sub">
+            Since you are <strong>already logged into YouTube</strong> in your browser, you don't have to re-type passwords! Use our custom extension to sync cookies to VeloxMac in 1 click:
+          </p>
+          <div class="extension-actions-row">
+            <button type="button" class="sync-large-btn" id="openExtFolderBtn" style="margin: 0; padding: 10px 16px; font-size: 13px;">
+              📂 Open Extension Folder in Finder
+            </button>
+            <a href="/api/extension/download" download="VeloxMac-Extension.zip" class="upload-cookie-btn" style="text-decoration: none; padding: 10px 14px; font-size: 12.5px;">
+              📥 Download .ZIP
+            </a>
+          </div>
+          <div class="extension-steps">
+            <div class="step-item"><span class="step-num">1</span> Go to <code>chrome://extensions</code> (or <code>brave://extensions</code>)</div>
+            <div class="step-item"><span class="step-num">2</span> Turn on <strong>Developer mode</strong> (top right switch)</div>
+            <div class="step-item"><span class="step-num">3</span> Drag & drop the <strong>extension</strong> folder into Chrome/Brave!</div>
+            <div class="step-item"><span class="step-num">4</span> Click the extension icon on YouTube &rarr; <strong>"⚡ 1-Click Sync to VeloxMac"</strong></div>
+          </div>
+        </div>
+
+        <!-- Method 2: 1-Click Native WebKit Window -->
+        <div class="cookie-method-card">
+          <div class="method-title">Option B: Native macOS YouTube Sign-In Window</div>
+          <p class="method-sub">
+            Opens an Apple WebKit window to YouTube. Sign in to your account and click <strong>"Save Cookies & Close"</strong>.
+          </p>
+          <button type="button" class="upload-cookie-btn" id="modalOneClickSyncBtn" style="padding: 10px 14px;">
+            <span class="btn-spinner" id="modalSyncSpinner" style="display: none;"></span>
+            <span id="modalSyncBtnText">⚡ Open Native WebKit Window</span>
+          </button>
+        </div>
+
+        <!-- Method 2: File Upload -->
+        <div class="cookie-method-card">
+          <div class="method-title">Option B: Upload cookies.txt</div>
+          <p class="method-sub">Export using the Chrome/Brave extension <strong>"Get cookies.txt locally"</strong>.</p>
+          <input type="file" id="cookieFileInput" accept=".txt" style="display: none;">
+          <button type="button" class="upload-cookie-btn" id="selectCookieFileBtn">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            <span>Choose cookies.txt File</span>
+          </button>
+        </div>
+
+        <!-- Method 3: Paste Cookie String -->
+        <div class="cookie-method-card">
+          <div class="method-title">Option C: Paste Cookie Text / document.cookie</div>
+          <p class="method-sub">Go to youtube.com &rarr; Press <kbd>Cmd+Option+J</kbd> &rarr; type <code>copy(document.cookie)</code> &rarr; Paste here:</p>
+          <textarea id="cookieTextInput" rows="3" placeholder="Paste Netscape cookie format or document.cookie string here (e.g. VISITOR_INFO1_LIVE=...; PREF=...)"></textarea>
+          <button type="button" class="save-cookie-btn" id="saveCookieTextBtn">Save & Apply Cookies</button>
+        </div>
+
+        <div class="cookie-current-status" id="cookieCurrentStatusBox">
+          <span id="currentStatusText">Checking cookie status...</span>
+          <button type="button" class="clear-cookie-btn" id="clearCookieBtn" style="display: none;">Clear Cookies</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="toastContainer" class="toast-container"></div>
+  <script src="/static/app.js"></script>
+</body>
+</html>
