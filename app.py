@@ -2,11 +2,12 @@ import asyncio
 import os
 from pathlib import Path
 from typing import Any, Dict, Optional
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
+import httpx
 
 from engine.job_manager import JobManager
 from engine.media_extractor import MediaExtractor
@@ -240,6 +241,61 @@ async def inspect_url(req: InspectRequest):
                 status_code=400,
                 detail=f"Unable to analyze URL as media or direct file: {str(media_err)}"
             )
+
+@app.get("/api/stream/proxy")
+async def stream_proxy(url: str, request: Request):
+    """Proxies media stream chunks with range header support for seamless desktop preview."""
+    if not url:
+        raise HTTPException(status_code=400, detail="URL missing")
+    
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    }
+    range_header = request.headers.get("range")
+    if range_header:
+        headers["Range"] = range_header
+
+    try:
+        # Load authenticated Netscape cookies from downloads/cookies.txt if available
+        cookies = None
+        cookie_path = os.path.join(DOWNLOADS_DIR, "cookies.txt")
+        if os.path.exists(cookie_path) and os.path.getsize(cookie_path) > 10:
+            import http.cookiejar
+            jar = http.cookiejar.MozillaCookieJar(cookie_path)
+            try:
+                jar.load(ignore_discard=True, ignore_expires=True)
+                cookies = jar
+            except Exception:
+                pass
+
+        client = httpx.AsyncClient(timeout=30.0, follow_redirects=True, cookies=cookies)
+        req = client.build_request("GET", url, headers=headers)
+        resp = await client.send(req, stream=True)
+
+        resp_headers = {
+            "Content-Type": resp.headers.get("content-type", "video/mp4"),
+            "Accept-Ranges": "bytes",
+        }
+        if "content-length" in resp.headers:
+            resp_headers["Content-Length"] = resp.headers["content-length"]
+        if "content-range" in resp.headers:
+            resp_headers["Content-Range"] = resp.headers["content-range"]
+
+        async def body_stream():
+            try:
+                async for chunk in resp.aiter_bytes(chunk_size=65536):
+                    yield chunk
+            finally:
+                await resp.aclose()
+                await client.aclose()
+
+        return StreamingResponse(
+            body_stream(),
+            status_code=resp.status_code,
+            headers=resp_headers
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Proxy error: {str(e)}")
 
 @app.post("/api/download/media")
 async def download_media(req: MediaDownloadRequest):

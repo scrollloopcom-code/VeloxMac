@@ -172,10 +172,37 @@ class MediaExtractor:
 
             video_id = info.get("id") or ""
             preview_stream_url = ""
-            for f in raw_formats:
-                if f.get("vcodec") != "none" and f.get("acodec") != "none" and f.get("url"):
-                    preview_stream_url = f.get("url")
-                    break
+            
+            # Select optimal lightweight preview stream (combined audio + video)
+            # Priority 1: Progressive MP4 with audio & video (format 18 / 22, 360p/720p)
+            combined_mp4 = [
+                f for f in raw_formats
+                if f.get("vcodec") != "none" and f.get("acodec") != "none" 
+                and f.get("url") and f.get("protocol") in ("https", "http")
+            ]
+            if combined_mp4:
+                # Prefer format 18 (360p) or 22 (720p) for instant buffering and scrub
+                f_opt = next((f for f in combined_mp4 if f.get("format_id") in ("18", "22")), None)
+                if f_opt:
+                    preview_stream_url = f_opt.get("url")
+                else:
+                    # Pick format closest to 360p
+                    combined_mp4.sort(key=lambda x: abs((x.get("height") or 360) - 360))
+                    preview_stream_url = combined_mp4[0].get("url")
+            else:
+                # Priority 2: Any combined stream (e.g. HLS m3u8_native or other protocols)
+                combined_any = [
+                    f for f in raw_formats
+                    if f.get("vcodec") != "none" and f.get("acodec") != "none" and f.get("url")
+                ]
+                if combined_any:
+                    combined_any.sort(key=lambda x: abs((x.get("height") or 360) - 360))
+                    preview_stream_url = combined_any[0].get("url")
+                elif raw_formats:
+                    # Fallback to any direct media stream with a URL
+                    with_url = [f for f in raw_formats if f.get("url")]
+                    if with_url:
+                        preview_stream_url = with_url[0].get("url")
 
             return {
                 "id": video_id,

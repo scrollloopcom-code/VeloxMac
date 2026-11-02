@@ -32,6 +32,7 @@ document.addEventListener('DOMContentLoaded', () => {
   checkSystemStatus();
   checkCookieStatus();
   setupEventListeners();
+  setupTrimmerStudioListeners();
 });
 
 function setupEventListeners() {
@@ -181,6 +182,372 @@ function setupEventListeners() {
       showToast('Failed to clear cookies', 'error');
     }
   });
+}
+
+// ==========================================================================
+// Time Helpers & Trimmer Studio Controller
+// ==========================================================================
+function parseTimeSeconds(str) {
+  if (!str) return 0;
+  const parts = str.trim().split(':').map(Number);
+  if (parts.some(isNaN)) return 0;
+  if (parts.length === 1) return parts[0];
+  if (parts.length === 2) return parts[0] * 60 + parts[1];
+  if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
+  return 0;
+}
+
+function formatSeconds(sec) {
+  if (sec <= 0) return '00:00:00';
+  const s = Math.floor(sec % 60);
+  const m = Math.floor((sec / 60) % 60);
+  const h = Math.floor(sec / 3600);
+  const pad = n => String(n).padStart(2, '0');
+  return `${pad(h)}:${pad(m)}:${pad(s)}`;
+}
+
+let currentStudioInfo = null;
+let studioIsPlayingClip = false;
+
+function setupTrimmerStudioListeners() {
+  const modal = document.getElementById('trimmerStudioModal');
+  const closeBtn = document.getElementById('closeTrimmerStudioBtn');
+  const cancelBtn = document.getElementById('cancelTrimmerStudioBtn');
+  const player = document.getElementById('studioVideoPlayer');
+  const loading = document.getElementById('studioVideoLoading');
+
+  const startSlider = document.getElementById('studioStartSlider');
+  const endSlider = document.getElementById('studioEndSlider');
+  const selectionStrip = document.getElementById('studioSelectionStrip');
+  const playheadCursor = document.getElementById('studioPlayheadCursor');
+  const playheadTime = document.getElementById('studioPlayheadTime');
+  const totalDuration = document.getElementById('studioTotalDuration');
+
+  const startChipTime = document.getElementById('startChipTime');
+  const playheadChipTime = document.getElementById('playheadChipTime');
+  const endChipTime = document.getElementById('endChipTime');
+
+  const startInput = document.getElementById('studioStartInput');
+  const endInput = document.getElementById('studioEndInput');
+  const clipDurationDisplay = document.getElementById('studioClipDurationDisplay');
+
+  const setStartBtn = document.getElementById('studioSetStartBtn');
+  const setEndBtn = document.getElementById('studioSetEndBtn');
+  const back5Btn = document.getElementById('studioBack5Btn');
+  const fwd5Btn = document.getElementById('studioFwd5Btn');
+  const playClipBtn = document.getElementById('studioPlayClipBtn');
+  const resetBtn = document.getElementById('studioResetBtn');
+
+  const zeroStartBtn = document.getElementById('studioZeroStartBtn');
+  const maxEndBtn = document.getElementById('studioMaxEndBtn');
+
+  const saveTrimToCardBtn = document.getElementById('saveTrimToCardBtn');
+  const applyAndDownloadNowBtn = document.getElementById('applyAndDownloadNowBtn');
+
+  if (!modal) return;
+
+  function getDuration() {
+    return (currentStudioInfo && currentStudioInfo.duration) ? Math.max(1, currentStudioInfo.duration) : (player && player.duration ? player.duration : 100);
+  }
+
+  function updateVisualTrack() {
+    const dur = getDuration();
+    const s = parseFloat(startSlider.value) || 0;
+    const e = parseFloat(endSlider.value) || dur;
+    const leftPct = (s / dur) * 100;
+    const widthPct = Math.max(0, ((e - s) / dur) * 100);
+
+    if (selectionStrip) {
+      selectionStrip.style.left = `${leftPct}%`;
+      selectionStrip.style.width = `${widthPct}%`;
+    }
+
+    if (startChipTime) startChipTime.textContent = formatSeconds(s);
+    if (endChipTime) endChipTime.textContent = formatSeconds(e);
+    if (startInput) startInput.value = formatSeconds(s);
+    if (endInput) endInput.value = formatSeconds(e);
+    if (clipDurationDisplay) clipDurationDisplay.textContent = formatSeconds(Math.max(0, e - s));
+  }
+
+  function closeModal() {
+    if (player) {
+      player.pause();
+      player.removeAttribute('src');
+      player.load();
+    }
+    studioIsPlayingClip = false;
+    modal.style.display = 'none';
+  }
+
+  if (closeBtn) closeBtn.addEventListener('click', closeModal);
+  if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
+
+  // Sliders
+  if (startSlider && endSlider) {
+    startSlider.addEventListener('input', () => {
+      const dur = getDuration();
+      let s = parseFloat(startSlider.value);
+      let e = parseFloat(endSlider.value);
+      if (s >= e) {
+        s = Math.max(0, e - 0.5);
+        startSlider.value = String(s);
+      }
+      updateVisualTrack();
+      if (player && !isNaN(player.duration) && player.duration > 0) {
+        player.currentTime = s;
+      }
+    });
+
+    endSlider.addEventListener('input', () => {
+      const dur = getDuration();
+      let s = parseFloat(startSlider.value);
+      let e = parseFloat(endSlider.value);
+      if (e <= s) {
+        e = Math.min(dur, s + 0.5);
+        endSlider.value = String(e);
+      }
+      updateVisualTrack();
+      if (player && !isNaN(player.duration) && player.duration > 0) {
+        player.currentTime = e;
+      }
+    });
+  }
+
+  // Timecode Inputs
+  if (startInput) {
+    startInput.addEventListener('change', () => {
+      const dur = getDuration();
+      let s = parseTimeSeconds(startInput.value);
+      let e = parseFloat(endSlider.value);
+      s = Math.max(0, Math.min(s, e - 0.5));
+      startSlider.value = String(s);
+      updateVisualTrack();
+    });
+  }
+
+  if (endInput) {
+    endInput.addEventListener('change', () => {
+      const dur = getDuration();
+      let s = parseFloat(startSlider.value);
+      let e = parseTimeSeconds(endInput.value);
+      e = Math.max(s + 0.5, Math.min(e, dur));
+      endSlider.value = String(e);
+      updateVisualTrack();
+    });
+  }
+
+  if (zeroStartBtn) {
+    zeroStartBtn.addEventListener('click', () => {
+      startSlider.value = '0';
+      updateVisualTrack();
+    });
+  }
+
+  if (maxEndBtn) {
+    maxEndBtn.addEventListener('click', () => {
+      endSlider.value = String(getDuration());
+      updateVisualTrack();
+    });
+  }
+
+  // Quick Action Buttons
+  if (setStartBtn) {
+    setStartBtn.addEventListener('click', () => {
+      const cur = player ? player.currentTime : 0;
+      let e = parseFloat(endSlider.value);
+      if (cur < e) {
+        startSlider.value = String(cur);
+        updateVisualTrack();
+        showToast(`✂️ Set Start [IN] to ${formatSeconds(cur)}`);
+      } else {
+        showToast('Start point must be before End point', 'error');
+      }
+    });
+  }
+
+  if (setEndBtn) {
+    setEndBtn.addEventListener('click', () => {
+      const cur = player ? player.currentTime : 0;
+      let s = parseFloat(startSlider.value);
+      if (cur > s) {
+        endSlider.value = String(cur);
+        updateVisualTrack();
+        showToast(`✂️ Set End [OUT] to ${formatSeconds(cur)}`);
+      } else {
+        showToast('End point must be after Start point', 'error');
+      }
+    });
+  }
+
+  if (back5Btn) {
+    back5Btn.addEventListener('click', () => {
+      if (player) player.currentTime = Math.max(0, player.currentTime - 5);
+    });
+  }
+
+  if (fwd5Btn) {
+    fwd5Btn.addEventListener('click', () => {
+      const dur = getDuration();
+      if (player) player.currentTime = Math.min(dur, player.currentTime + 5);
+    });
+  }
+
+  if (playClipBtn) {
+    playClipBtn.addEventListener('click', () => {
+      if (!player) return;
+      const s = parseFloat(startSlider.value);
+      studioIsPlayingClip = true;
+      player.currentTime = s;
+      player.play().catch(() => {});
+      showToast('▶️ Playing selected clip range...');
+    });
+  }
+
+  if (resetBtn) {
+    resetBtn.addEventListener('click', () => {
+      const dur = getDuration();
+      startSlider.value = '0';
+      endSlider.value = String(dur);
+      updateVisualTrack();
+      if (player) player.currentTime = 0;
+      showToast('🔄 Reset to full video');
+    });
+  }
+
+  // Video Events
+  if (player) {
+    player.addEventListener('loadstart', () => {
+      if (loading) loading.style.display = 'flex';
+    });
+    player.addEventListener('canplay', () => {
+      if (loading) loading.style.display = 'none';
+    });
+    player.addEventListener('waiting', () => {
+      if (loading) loading.style.display = 'flex';
+    });
+    player.addEventListener('playing', () => {
+      if (loading) loading.style.display = 'none';
+    });
+    player.addEventListener('timeupdate', () => {
+      const cur = player.currentTime;
+      const dur = getDuration();
+      if (playheadTime) playheadTime.textContent = formatSeconds(cur);
+      if (playheadChipTime) playheadChipTime.textContent = formatSeconds(cur);
+      if (playheadCursor) {
+        const curPct = Math.min(100, Math.max(0, (cur / dur) * 100));
+        playheadCursor.style.left = `${curPct}%`;
+      }
+
+      if (studioIsPlayingClip) {
+        const e = parseFloat(endSlider.value);
+        if (cur >= e) {
+          player.pause();
+          studioIsPlayingClip = false;
+        }
+      }
+    });
+  }
+
+  // Save to Downloader Card
+  if (saveTrimToCardBtn) {
+    saveTrimToCardBtn.addEventListener('click', () => {
+      const sStr = startInput.value;
+      const eStr = endInput.value;
+      const cardToggle = document.getElementById('enableClipToggle');
+      const cardStart = document.getElementById('clipStartInput');
+      const cardEnd = document.getElementById('clipEndInput');
+      const cardControls = document.getElementById('trimmerControls');
+      const cardDuration = document.getElementById('clipDurationText');
+
+      if (cardToggle) cardToggle.checked = true;
+      if (cardControls) cardControls.style.display = 'grid';
+      if (cardStart) cardStart.value = sStr;
+      if (cardEnd) cardEnd.value = eStr;
+      if (cardDuration) {
+        const diff = Math.max(0, parseTimeSeconds(eStr) - parseTimeSeconds(sStr));
+        cardDuration.textContent = formatSeconds(diff);
+      }
+
+      showToast(`✂️ Clip applied: ${sStr} - ${eStr}`);
+      closeModal();
+    });
+  }
+
+  // Apply & Download Now
+  if (applyAndDownloadNowBtn) {
+    applyAndDownloadNowBtn.addEventListener('click', () => {
+      const sStr = startInput.value;
+      const eStr = endInput.value;
+      const cardToggle = document.getElementById('enableClipToggle');
+      const cardStart = document.getElementById('clipStartInput');
+      const cardEnd = document.getElementById('clipEndInput');
+      const cardControls = document.getElementById('trimmerControls');
+
+      if (cardToggle) cardToggle.checked = true;
+      if (cardControls) cardControls.style.display = 'grid';
+      if (cardStart) cardStart.value = sStr;
+      if (cardEnd) cardEnd.value = eStr;
+
+      closeModal();
+
+      const startDownloadBtn = document.getElementById('startDownloadBtn');
+      if (startDownloadBtn) {
+        startDownloadBtn.click();
+      }
+    });
+  }
+}
+
+function openTrimmerStudio(info) {
+  currentStudioInfo = info;
+  const modal = document.getElementById('trimmerStudioModal');
+  const title = document.getElementById('studioModalTitle');
+  const totalDuration = document.getElementById('studioTotalDuration');
+  const player = document.getElementById('studioVideoPlayer');
+  const loading = document.getElementById('studioVideoLoading');
+  const startSlider = document.getElementById('studioStartSlider');
+  const endSlider = document.getElementById('studioEndSlider');
+
+  const dur = (info && info.duration) ? Math.max(1, info.duration) : 100;
+  if (title) title.textContent = `Velox Trimmer Studio — ${info.title || 'Video'}`;
+  if (totalDuration) totalDuration.textContent = info.duration_str || formatSeconds(dur);
+
+  const cardStart = document.getElementById('clipStartInput');
+  const cardEnd = document.getElementById('clipEndInput');
+  let s = (cardStart && cardStart.value) ? parseTimeSeconds(cardStart.value) : 0;
+  let e = (cardEnd && cardEnd.value) ? parseTimeSeconds(cardEnd.value) : dur;
+  if (e <= 0 || e > dur) e = dur;
+  if (s >= e) s = 0;
+
+  if (startSlider && endSlider) {
+    startSlider.min = '0';
+    startSlider.max = String(dur);
+    startSlider.step = '0.5';
+    startSlider.value = String(s);
+
+    endSlider.min = '0';
+    endSlider.max = String(dur);
+    endSlider.step = '0.5';
+    endSlider.value = String(e);
+
+    // Sync track visual
+    startSlider.dispatchEvent(new Event('input'));
+  }
+
+  // Load authenticated preview stream
+  if (player) {
+    if (info.preview_stream_url) {
+      if (loading) loading.style.display = 'flex';
+      player.src = `/api/stream/proxy?url=${encodeURIComponent(info.preview_stream_url)}`;
+      player.load();
+      player.currentTime = s;
+    } else {
+      if (loading) loading.style.display = 'none';
+      player.removeAttribute('src');
+    }
+  }
+
+  if (modal) modal.style.display = 'flex';
 }
 
 async function uploadCookieText(text) {
@@ -393,6 +760,9 @@ function renderMediaInspection(info) {
           <span class="trimmer-title">✂️ Clip / Trim Video (Download Specific Part)</span>
           <span class="trimmer-sub">Cut exact start & end timestamps without downloading the full video</span>
         </div>
+        <button type="button" class="open-trimmer-studio-btn" id="openTrimmerStudioBtn">
+          🎬 Open Trimmer Studio
+        </button>
       </div>
 
       <div class="trimmer-inputs-wrapper" id="trimmerControls" style="display: none;">
@@ -409,7 +779,7 @@ function renderMediaInspection(info) {
                 allowfullscreen>
               </iframe>
             ` : (info.preview_stream_url ? `
-              <video id="clipHtmlVideo" controls playsinline src="${info.preview_stream_url}" poster="${info.thumbnail}"></video>
+              <video id="clipHtmlVideo" controls playsinline src="/api/stream/proxy?url=${encodeURIComponent(info.preview_stream_url)}" poster="${info.thumbnail}"></video>
             ` : `
               <div class="preview-placeholder">
                 <img src="${info.thumbnail}" alt="Thumbnail">
@@ -448,6 +818,20 @@ function renderMediaInspection(info) {
         </div>
 
         <div class="time-input-box">
+          <label>End Timestamp</label>
+          <div class="time-field-row">
+            <input type="text" id="clipEndInput" placeholder="${info.duration_str || '00:00:00'}" value="${info.duration_str || '00:00:00'}">
+            <button type="button" class="quick-time-btn" id="setEndMaxBtn">End</button>
+          </div>
+        </div>
+
+        <div class="clip-summary-box">
+          <span class="summary-label">Selected Clip Length:</span>
+          <span class="summary-duration" id="clipDurationText">${info.duration_str || '00:00:00'}</span>
+          <span class="summary-hint">⚡ Fast keyframe stream-cut</span>
+        </div>
+      </div>
+    </div>
           <label>End Timestamp</label>
           <div class="time-field-row">
             <input type="text" id="clipEndInput" placeholder="00:00:00" value="${info.duration_str || '00:00:00'}">
@@ -527,6 +911,7 @@ function renderMediaInspection(info) {
   updateFormatCards();
 
   // Video Trimmer Toggle & Inputs
+  const openTrimmerStudioBtn = document.getElementById('openTrimmerStudioBtn');
   const enableClipToggle = document.getElementById('enableClipToggle');
   const trimmerControls = document.getElementById('trimmerControls');
   const clipStartInput = document.getElementById('clipStartInput');
@@ -535,24 +920,10 @@ function renderMediaInspection(info) {
   const setStartZeroBtn = document.getElementById('setStartZeroBtn');
   const setEndMaxBtn = document.getElementById('setEndMaxBtn');
 
-  function parseTimeSeconds(str) {
-    if (!str) return 0;
-    const parts = str.trim().split(':').map(Number);
-    if (parts.some(isNaN)) return 0;
-    if (parts.length === 1) return parts[0];
-    if (parts.length === 2) return parts[0] * 60 + parts[1];
-    if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
-    return 0;
-  }
-
-  function formatSeconds(sec) {
-    if (sec <= 0) return '00:00';
-    const s = Math.floor(sec % 60);
-    const m = Math.floor((sec / 60) % 60);
-    const h = Math.floor(sec / 3600);
-    const pad = n => String(n).padStart(2, '0');
-    if (h > 0) return `${pad(h)}:${pad(m)}:${pad(s)}`;
-    return `${pad(m)}:${pad(s)}`;
+  if (openTrimmerStudioBtn) {
+    openTrimmerStudioBtn.addEventListener('click', () => {
+      openTrimmerStudio(info);
+    });
   }
 
   function updateClipDurationDisplay() {
@@ -560,7 +931,7 @@ function renderMediaInspection(info) {
     const s = parseTimeSeconds(clipStartInput.value);
     const e = parseTimeSeconds(clipEndInput.value);
     const diff = Math.max(0, e - s);
-    clipDurationText.textContent = diff > 0 ? formatSeconds(diff) : '00:00 (Invalid range)';
+    clipDurationText.textContent = diff > 0 ? formatSeconds(diff) : '00:00:00 (Invalid range)';
   }
 
   enableClipToggle.addEventListener('change', () => {

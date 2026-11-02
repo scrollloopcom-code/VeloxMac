@@ -222,6 +222,142 @@
     </div>
   </div>
 
+  <!-- Trimmer Studio Modal (Dedicated Popup Window) -->
+  <div class="modal-backdrop" id="trimmerStudioModal" style="display: none;">
+    <div class="modal-card trimmer-studio-card">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <span class="modal-icon">✂️</span>
+          <div>
+            <h3 class="modal-title" id="studioModalTitle">VeloxMac Trimmer Studio</h3>
+            <span class="modal-subtitle">Preview with authenticated audio & video playback. Set precise Start & End cut points.</span>
+          </div>
+        </div>
+        <button class="modal-close-btn" id="closeTrimmerStudioBtn">&times;</button>
+      </div>
+
+      <div class="modal-body studio-modal-body">
+        <!-- Video Player Stage with Audio -->
+        <div class="studio-player-container">
+          <video id="studioVideoPlayer" controls playsinline preload="metadata"></video>
+          <div class="studio-player-overlay" id="studioVideoLoading" style="display: none;">
+            <div class="spinner"></div>
+            <span>Loading authenticated preview stream...</span>
+          </div>
+        </div>
+
+        <!-- Dual-Range Interactive Timeline Track -->
+        <div class="studio-timeline-card">
+          <div class="timeline-header-row">
+            <span class="timeline-title">🎯 Dual-Marker Timeline Track:</span>
+            <div class="timeline-time-readout">
+              <span class="readout-item">Playhead: <strong id="studioPlayheadTime">00:00:00</strong></span>
+              <span class="readout-sep">•</span>
+              <span class="readout-item">Duration: <span id="studioTotalDuration">00:00:00</span></span>
+            </div>
+          </div>
+
+          <!-- Dual-Handle Visual Timeline Bar -->
+          <div class="dual-range-track-wrapper" id="dualTrackContainer">
+            <div class="dual-range-track-bg"></div>
+            <!-- Highlighted region between Start and End -->
+            <div class="dual-range-selection-strip" id="studioSelectionStrip"></div>
+            <!-- Playhead cursor needle -->
+            <div class="studio-playhead-cursor" id="studioPlayheadCursor"></div>
+
+            <!-- Start Marker Thumb & End Marker Thumb (Dual sliders) -->
+            <input type="range" class="studio-slider start-slider" id="studioStartSlider" min="0" max="100" step="0.5" value="0">
+            <input type="range" class="studio-slider end-slider" id="studioEndSlider" min="0" max="100" step="0.5" value="100">
+          </div>
+
+          <!-- Visual Markers Readout on the Timeline -->
+          <div class="timeline-markers-bar">
+            <div class="marker-chip start-chip" id="startMarkerChip">
+              <span class="marker-arrow">▲</span>
+              <span class="marker-tag">START [IN]</span>
+              <strong id="startChipTime">00:00:00</strong>
+            </div>
+            <div class="marker-chip playhead-chip" id="playheadMarkerChip">
+              <span class="marker-arrow">▼</span>
+              <span class="marker-tag">CURRENT</span>
+              <strong id="playheadChipTime">00:00:00</strong>
+            </div>
+            <div class="marker-chip end-chip" id="endMarkerChip">
+              <span class="marker-arrow">▲</span>
+              <span class="marker-tag">END [OUT]</span>
+              <strong id="endChipTime">00:00:00</strong>
+            </div>
+          </div>
+
+          <!-- Quick Action Controls -->
+          <div class="studio-quick-actions">
+            <button type="button" class="studio-action-btn in-point-btn" id="studioSetStartBtn">
+              ⏱️ Set Start [IN] at Playhead
+            </button>
+            <button type="button" class="studio-action-btn nav-btn" id="studioBack5Btn">
+              ⏪ -5s
+            </button>
+            <button type="button" class="studio-action-btn play-clip-btn" id="studioPlayClipBtn">
+              ▶️ Play Selected Clip
+            </button>
+            <button type="button" class="studio-action-btn nav-btn" id="studioFwd5Btn">
+              +5s ⏩
+            </button>
+            <button type="button" class="studio-action-btn out-point-btn" id="studioSetEndBtn">
+              ⏱️ Set End [OUT] at Playhead
+            </button>
+            <button type="button" class="studio-action-btn reset-btn" id="studioResetBtn">
+              🔄 Full Video
+            </button>
+          </div>
+        </div>
+
+        <!-- Precise Timecode Inputs & Summary -->
+        <div class="studio-timecodes-row">
+          <div class="timecode-box in-box">
+            <label class="timecode-label">
+              <span class="badge in-badge">[ IN-POINT ]</span> Start Timestamp:
+            </label>
+            <div class="timecode-input-group">
+              <input type="text" class="timecode-input" id="studioStartInput" placeholder="00:00:00" value="00:00:00">
+              <button type="button" class="timecode-pill" id="studioZeroStartBtn">0:00</button>
+            </div>
+          </div>
+
+          <div class="timecode-duration-display">
+            <span class="duration-label">✂️ Selected Clip Length:</span>
+            <div class="duration-highlight" id="studioClipDurationDisplay">00:00:00</div>
+            <span class="duration-sub">⚡ Fast keyframe stream-cut (zero re-encoding loss)</span>
+          </div>
+
+          <div class="timecode-box out-box">
+            <label class="timecode-label">
+              <span class="badge out-badge">[ OUT-POINT ]</span> End Timestamp:
+            </label>
+            <div class="timecode-input-group">
+              <input type="text" class="timecode-input" id="studioEndInput" placeholder="00:00:00">
+              <button type="button" class="timecode-pill" id="studioMaxEndBtn">End</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer studio-modal-footer">
+        <button type="button" class="studio-secondary-btn" id="cancelTrimmerStudioBtn">
+          Cancel
+        </button>
+        <div class="studio-footer-right">
+          <button type="button" class="studio-apply-btn" id="saveTrimToCardBtn">
+            💾 Apply Clip to Downloader
+          </button>
+          <button type="button" class="studio-download-now-btn" id="applyAndDownloadNowBtn">
+            ⚡ Apply & Download Clip Now
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div id="toastContainer" class="toast-container"></div>
   <script src="/static/app.js"></script>
 </body>
