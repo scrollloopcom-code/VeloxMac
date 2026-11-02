@@ -1174,13 +1174,19 @@ function initWebSocket() {
           }
         }
       } else if (data.type === 'active_batch') {
+        let needsRender = false;
         data.jobs.forEach(j => {
+          const existed = !!state.jobs[j.id];
           state.jobs[j.id] = j;
           const card = document.querySelector(`.job-card[data-jobid="${j.id}"]`);
           if (card) {
             updateJobCardInPlace(card, j);
+          } else {
+            needsRender = true;
           }
+          if (!existed) needsRender = true;
         });
+        if (needsRender) renderJobs();
       } else if (data.type === 'job_deleted') {
         delete state.jobs[data.job_id];
         renderJobs();
@@ -1240,70 +1246,79 @@ function setupJobActionDelegation() {
 // In-place Job Card Updater (eliminates DOM thrashing and CPU lag)
 function updateJobCardInPlace(card, job) {
   const isDownloading = job.status === 'downloading';
-  const isPaused = job.status === 'paused';
+  const isQueued      = job.status === 'queued';
+  const isPaused      = job.status === 'paused';
+  const isClip        = !!(job.clip_start || job.clip_end);
+  const isActive      = isDownloading || isQueued;
 
   let statusBadge = '';
-  if (job.status === 'downloading') statusBadge = '<span style="color:var(--accent-cyan)">Downloading</span>';
-  else if (job.status === 'assembling') statusBadge = '<span style="color:var(--accent-amber)">Muxing & Merging...</span>';
-  else if (job.status === 'paused') statusBadge = '<span style="color:var(--accent-amber)">Paused</span>';
+  if (isDownloading || isQueued) {
+    statusBadge = isClip
+      ? '<span style="color:var(--accent-cyan)">Downloading full file for clip…</span>'
+      : '<span style="color:var(--accent-cyan)">Downloading</span>';
+  }
+  else if (job.status === 'assembling') statusBadge = '<span style="color:var(--accent-amber)">Muxing & Merging…</span>';
+  else if (isPaused)    statusBadge = '<span style="color:var(--accent-amber)">Paused</span>';
   else if (job.status === 'completed') statusBadge = '<span style="color:var(--accent-green)">Completed</span>';
   else if (job.status === 'error') statusBadge = `<span style="color:var(--accent-red)">Error: ${escapeHtml(job.error_message || 'Failed')}</span>`;
 
   // Meta line update
   const metaLine = card.querySelector('.job-meta-line');
   if (metaLine) {
-    const clipHtml = (job.clip_start || job.clip_end) ? ` &bull; <span class="clip-badge">✂️ Clip: ${job.clip_start || '00:00'} - ${job.clip_end || 'end'}</span>` : '';
-    metaLine.innerHTML = `${statusBadge} &bull; ${job.downloaded_str} of ${job.total_str} (${job.progress}%)${clipHtml}`;
+    const metaProgress = (isActive || isPaused)
+      ? `<span class="meta-progress">${job.downloaded_str} / ${job.total_str} (${job.progress}%)</span>`
+      : '';
+    const clipBadge = isClip
+      ? `<span class="clip-badge">✂️ ${job.clip_start || '00:00'}–${job.clip_end || 'end'}</span>`
+      : '';
+    metaLine.innerHTML = `${statusBadge}${metaProgress}${clipBadge}`;
   }
 
-  // Progress Bar update
+  // Progress Bar
   const progressBar = card.querySelector('.progress-bar-fill');
-  if (progressBar) {
-    progressBar.style.width = `${job.progress}%`;
-  }
+  if (progressBar) progressBar.style.width = `${job.progress}%`;
 
-  // Multi-thread Segments update
+  // Segment bars in-place update
   if (job.segments && job.segments.length > 0) {
     const segmentBlocks = card.querySelectorAll('.segment-block');
     if (segmentBlocks.length === job.segments.length) {
       job.segments.forEach((seg, idx) => {
         const fill = segmentBlocks[idx].querySelector('.segment-fill');
         if (fill) fill.style.width = `${seg.progress_pct}%`;
+        segmentBlocks[idx].title = `Thread ${idx+1}: ${Math.round(seg.progress_pct)}%`;
       });
     }
   }
 
-  // Telemetry (Speed & ETA) update
+  // Telemetry row
   let telemetry = card.querySelector('.job-telemetry-row');
-  if (isDownloading) {
+  if (isActive) {
     if (!telemetry) {
       telemetry = document.createElement('div');
       telemetry.className = 'job-telemetry-row';
       card.appendChild(telemetry);
     }
     telemetry.innerHTML = `
-      <span class="speed-badge">⚡️ ${job.speed_str}</span>
-      <span>ETA: ${job.eta_str}</span>
+      <span class="speed-badge">⚡ ${job.speed_str || '0 KB/s'}</span>
+      <span class="eta-label">ETA: ${job.eta_str || '—'}</span>
     `;
   } else if (telemetry) {
     telemetry.remove();
   }
 
-  // Pause / Resume Button swap
-  const pauseBtn = card.querySelector('.pause-btn');
+  // Pause / Resume button swap
+  const pauseBtn  = card.querySelector('.pause-btn');
   const resumeBtn = card.querySelector('.resume-btn');
   if (isDownloading && resumeBtn) {
     resumeBtn.outerHTML = `
       <button class="action-btn pause-btn" data-jobid="${job.id}" title="Pause">
         <svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
-      </button>
-    `;
+      </button>`;
   } else if (isPaused && pauseBtn) {
     pauseBtn.outerHTML = `
       <button class="action-btn resume-btn" data-jobid="${job.id}" title="Resume">
         <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-      </button>
-    `;
+      </button>`;
   }
 }
 
@@ -1349,23 +1364,31 @@ function renderJobs() {
 
 function renderJobCard(job) {
   const isDownloading = job.status === 'downloading';
-  const isPaused = job.status === 'paused';
-  const isCompleted = job.status === 'completed';
+  const isQueued     = job.status === 'queued';
+  const isPaused     = job.status === 'paused';
+  const isCompleted  = job.status === 'completed';
+  const isClip       = !!(job.clip_start || job.clip_end);
 
   let statusBadge = '';
-  if (job.status === 'downloading') statusBadge = '<span style="color:var(--accent-cyan)">Downloading</span>';
-  else if (job.status === 'assembling') statusBadge = '<span style="color:var(--accent-amber)">Muxing & Merging...</span>';
-  else if (job.status === 'paused') statusBadge = '<span style="color:var(--accent-amber)">Paused</span>';
-  else if (job.status === 'completed') statusBadge = '<span style="color:var(--accent-green)">Completed</span>';
+  if (isDownloading || isQueued) {
+    if (isClip) {
+      statusBadge = '<span style="color:var(--accent-cyan)">Downloading full file for clip…</span>';
+    } else {
+      statusBadge = '<span style="color:var(--accent-cyan)">Downloading</span>';
+    }
+  }
+  else if (job.status === 'assembling') statusBadge = '<span style="color:var(--accent-amber)">Muxing & Merging…</span>';
+  else if (isPaused)    statusBadge = '<span style="color:var(--accent-amber)">Paused</span>';
+  else if (isCompleted) statusBadge = '<span style="color:var(--accent-green)">Completed</span>';
   else if (job.status === 'error') statusBadge = `<span style="color:var(--accent-red)">Error: ${escapeHtml(job.error_message || 'Failed')}</span>`;
 
-  // Segment visualizer (for multi-threaded IDM direct downloads)
+  // Segment bars — compact single row
   let segmentsHtml = '';
-  if (job.segments && job.segments.length > 0 && (isDownloading || isPaused)) {
+  if (job.segments && job.segments.length > 0 && (isDownloading || isQueued || isPaused)) {
     segmentsHtml = `
       <div class="segment-visualizer">
-        ${job.segments.map(s => `
-          <div class="segment-block" title="Chunk ${s.index}: ${s.progress_pct}%">
+        ${job.segments.map((s, i) => `
+          <div class="segment-block" title="Thread ${i+1}: ${Math.round(s.progress_pct)}%">
             <div class="segment-fill" style="width: ${s.progress_pct}%"></div>
           </div>
         `).join('')}
@@ -1373,12 +1396,20 @@ function renderJobCard(job) {
     `;
   }
 
+  const clipBadge = isClip
+    ? `<span class="clip-badge">✂️ ${job.clip_start || '00:00'}–${job.clip_end || 'end'}</span>`
+    : '';
+
+  const metaProgress = (isDownloading || isQueued || isPaused)
+    ? `${job.downloaded_str} / ${job.total_str} (${job.progress}%)`
+    : '';
+
   return `
     <div class="job-card" data-jobid="${job.id}">
       <div class="job-main-row">
         <div class="job-info-col">
           <div class="job-icon">
-            ${job.thumbnail ? `<img src="${job.thumbnail}" alt="Thumbnail">` : `
+            ${job.thumbnail ? `<img src="${job.thumbnail}" alt="">` : `
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
                 <polyline points="7 10 12 15 17 10"/>
@@ -1389,8 +1420,9 @@ function renderJobCard(job) {
           <div class="job-text">
             <div class="job-title" title="${escapeHtml(job.title)}">${escapeHtml(job.title)}</div>
             <div class="job-meta-line">
-              ${statusBadge} &bull; ${job.downloaded_str} of ${job.total_str} (${job.progress}%)
-              ${job.clip_start || job.clip_end ? ` &bull; <span class="clip-badge">✂️ Clip: ${job.clip_start || '00:00'} - ${job.clip_end || 'end'}</span>` : ''}
+              ${statusBadge}
+              ${metaProgress ? `<span class="meta-progress">${metaProgress}</span>` : ''}
+              ${clipBadge}
             </div>
           </div>
         </div>
@@ -1401,40 +1433,38 @@ function renderJobCard(job) {
               <svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
             </button>
           ` : ''}
-
           ${isPaused ? `
             <button class="action-btn resume-btn" data-jobid="${job.id}" title="Resume">
               <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
             </button>
           ` : ''}
-
           ${isCompleted ? `
-            <button class="action-btn primary-action open-btn" data-jobid="${job.id}" title="Play / Open">
+            <button class="action-btn primary-action open-btn" data-jobid="${job.id}" title="Open">
               <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
             </button>
-            <button class="action-btn reveal-btn" data-jobid="${job.id}" title="Reveal in macOS Finder">
+            <button class="action-btn reveal-btn" data-jobid="${job.id}" title="Reveal in Finder">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
               </svg>
             </button>
           ` : ''}
-
           <button class="action-btn delete-btn" data-jobid="${job.id}" title="Remove">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
         </div>
       </div>
 
-      <div class="progress-bar-container">
-        <div class="progress-bar-fill" style="width: ${job.progress}%"></div>
+      <div class="job-progress-row">
+        <div class="progress-bar-container">
+          <div class="progress-bar-fill" style="width: ${job.progress}%"></div>
+        </div>
+        ${segmentsHtml}
       </div>
 
-      ${segmentsHtml}
-
-      ${isDownloading ? `
+      ${(isDownloading || isQueued) ? `
         <div class="job-telemetry-row">
-          <span class="speed-badge">⚡️ ${job.speed_str}</span>
-          <span>ETA: ${job.eta_str}</span>
+          <span class="speed-badge">⚡ ${job.speed_str || '0 KB/s'}</span>
+          <span class="eta-label">ETA: ${job.eta_str || '—'}</span>
         </div>
       ` : ''}
     </div>
