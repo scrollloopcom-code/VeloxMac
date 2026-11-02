@@ -8,7 +8,7 @@ import time
 import uuid
 from typing import Any, Callable, Dict, List, Optional
 
-from engine.media_extractor import MediaExtractor
+from engine.media_extractor import MediaExtractor, JobPausedException
 from engine.segmented_downloader import SegmentedDownloader
 
 class Job:
@@ -52,6 +52,7 @@ class Job:
 
         # Cancellation & Pause primitives
         self.cancel_event = threading.Event()
+        self.pause_event = threading.Event()
         self.downloader_instance: Optional[SegmentedDownloader] = None
 
     def to_dict(self) -> Dict[str, Any]:
@@ -264,6 +265,7 @@ class JobManager:
                     output_name=job.title,
                     progress_callback=progress_cb,
                     cancel_event=job.cancel_event,
+                    pause_event=job.pause_event,
                     browser_cookies=job.browser_cookies,
                     clip_start=c_start,
                     clip_end=c_end
@@ -278,9 +280,17 @@ class JobManager:
             if os.path.exists(final_file):
                 job.total_bytes = os.path.getsize(final_file)
                 job.downloaded_bytes = job.total_bytes
+        except JobPausedException:
+            job.status = "paused"
+            job.speed = 0.0
+            job.eta = 0
         except Exception as e:
             if job.cancel_event.is_set():
                 job.status = "cancelled"
+            elif job.pause_event.is_set():
+                job.status = "paused"
+                job.speed = 0.0
+                job.eta = 0
             else:
                 job.status = "error"
                 job.error_message = str(e)
@@ -331,8 +341,11 @@ class JobManager:
 
     def pause_job(self, job_id: str):
         job = self.jobs.get(job_id)
-        if job and job.status == "downloading":
+        if job and job.status in ("downloading", "assembling"):
             job.status = "paused"
+            job.speed = 0.0
+            job.eta = 0
+            job.pause_event.set()
             if job.downloader_instance:
                 job.downloader_instance.pause()
             self._save_state()
@@ -342,11 +355,12 @@ class JobManager:
         job = self.jobs.get(job_id)
         if job and job.status == "paused":
             job.status = "downloading"
+            job.pause_event.clear()
+            job.cancel_event.clear()
             if job.downloader_instance:
                 job.downloader_instance.resume()
                 asyncio.create_task(self._run_direct_job(job))
             elif job.type == "media":
-                job.cancel_event.clear()
                 asyncio.create_task(self._run_media_job(job))
             self._save_state()
             self.broadcast_update({"type": "job_update", "job": job.to_dict()})
@@ -354,10 +368,13 @@ class JobManager:
     def cancel_job(self, job_id: str):
         job = self.jobs.get(job_id)
         if job:
+            job.pause_event.set()
             job.cancel_event.set()
             if job.downloader_instance:
                 job.downloader_instance.cancel()
             job.status = "cancelled"
+            job.speed = 0.0
+            job.eta = 0
             self._save_state()
             self.broadcast_update({"type": "job_update", "job": job.to_dict()})
 

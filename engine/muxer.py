@@ -40,6 +40,24 @@ def run_ffmpeg(args: list[str], timeout: Optional[int] = None) -> subprocess.Com
     cmd = [FFMPEG_PATH] + args
     return subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
 
+def get_media_duration(file_path: str) -> Optional[float]:
+    """Inspects the exact media duration in seconds using ffprobe."""
+    if not FFPROBE_PATH or not os.path.exists(file_path):
+        return None
+    try:
+        cmd = [
+            FFPROBE_PATH, "-v", "error",
+            "-show_entries", "format=duration",
+            "-of", "default=noprint_wrappers=1:nokey=1",
+            file_path
+        ]
+        res = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+        if res.returncode == 0 and res.stdout.strip():
+            return float(res.stdout.strip())
+    except Exception:
+        pass
+    return None
+
 def trim_media_file(input_file: str, output_file: str, start_sec: float, end_sec: Optional[float] = None) -> bool:
     """Precisely trims a media file using ffmpeg with stream-copy and re-encode fallback."""
     if not FFMPEG_PATH or not os.path.exists(input_file):

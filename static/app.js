@@ -33,6 +33,7 @@ document.addEventListener('DOMContentLoaded', () => {
   checkCookieStatus();
   setupEventListeners();
   setupTrimmerStudioListeners();
+  setupJobActionDelegation();
 });
 
 function setupEventListeners() {
@@ -769,23 +770,14 @@ function renderMediaInspection(info) {
         <!-- Embedded Interactive Preview Player (Video + Audio) -->
         <div class="clip-preview-container">
           <div class="preview-media-box">
-            ${(info.extractor === 'Youtube' || (info.url && (info.url.includes('youtube.com') || info.url.includes('youtu.be')))) && info.id ? `
-              <iframe 
-                id="clipIframePlayer" 
-                src="https://www.youtube-nocookie.com/embed/${info.id}?enablejsapi=1&playsinline=1" 
-                title="Preview" 
-                frameborder="0" 
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                allowfullscreen>
-              </iframe>
-            ` : (info.preview_stream_url ? `
-              <video id="clipHtmlVideo" controls playsinline src="/api/stream/proxy?url=${encodeURIComponent(info.preview_stream_url)}" poster="${info.thumbnail}"></video>
+            ${info.preview_stream_url ? `
+              <video id="clipHtmlVideo" controls playsinline preload="none" data-src="/api/stream/proxy?url=${encodeURIComponent(info.preview_stream_url)}" poster="${info.thumbnail}"></video>
             ` : `
               <div class="preview-placeholder">
                 <img src="${info.thumbnail}" alt="Thumbnail">
-                <span class="preview-note">Use timeline scrubber & quick buttons below to select clip</span>
+                <span class="preview-note">Click "🎬 Open Trimmer Studio" to scrub and set cut points</span>
               </div>
-            `)}
+            `}
           </div>
 
           <!-- Scrubbing Bar & Playhead Position -->
@@ -936,6 +928,10 @@ function renderMediaInspection(info) {
 
   enableClipToggle.addEventListener('change', () => {
     trimmerControls.style.display = enableClipToggle.checked ? 'grid' : 'none';
+    if (enableClipToggle.checked && clipHtmlVideo && !clipHtmlVideo.src && clipHtmlVideo.dataset.src) {
+      clipHtmlVideo.src = clipHtmlVideo.dataset.src;
+      clipHtmlVideo.load();
+    }
     updateClipDurationDisplay();
   });
 
@@ -1163,11 +1159,28 @@ function initWebSocket() {
         data.jobs.forEach(j => { state.jobs[j.id] = j; });
         renderJobs();
       } else if (data.type === 'job_update') {
+        const oldJob = state.jobs[data.job.id];
         state.jobs[data.job.id] = data.job;
-        renderJobs();
+        const oldActive = oldJob && ['queued', 'downloading', 'assembling', 'paused'].includes(oldJob.status);
+        const newActive = ['queued', 'downloading', 'assembling', 'paused'].includes(data.job.status);
+        if (!oldJob || oldActive !== newActive) {
+          renderJobs();
+        } else {
+          const card = document.querySelector(`.job-card[data-jobid="${data.job.id}"]`);
+          if (card) {
+            updateJobCardInPlace(card, data.job);
+          } else {
+            renderJobs();
+          }
+        }
       } else if (data.type === 'active_batch') {
-        data.jobs.forEach(j => { state.jobs[j.id] = j; });
-        renderJobs();
+        data.jobs.forEach(j => {
+          state.jobs[j.id] = j;
+          const card = document.querySelector(`.job-card[data-jobid="${j.id}"]`);
+          if (card) {
+            updateJobCardInPlace(card, j);
+          }
+        });
       } else if (data.type === 'job_deleted') {
         delete state.jobs[data.job_id];
         renderJobs();
@@ -1176,7 +1189,6 @@ function initWebSocket() {
         checkCookieStatus();
         if (data.count > 0) {
           showToast(`✅ Successfully synced ${data.count} YouTube cookies! BotGuard bypassed.`, 'success');
-          // If user was trying to analyze a link that failed with BotGuard, auto-retry now!
           if (pendingRetryUrl && urlInput.value.trim() === pendingRetryUrl) {
             showToast('🔄 Auto-analyzing video link with newly synced cookies...');
             inspectForm.dispatchEvent(new Event('submit'));
@@ -1197,42 +1209,142 @@ function initWebSocket() {
   };
 }
 
+// Global Event Delegation for Job Actions
+function setupJobActionDelegation() {
+  function handleActionClick(e) {
+    const btn = e.target.closest('button[data-jobid]');
+    if (!btn) return;
+    e.stopPropagation();
+    const jobId = btn.dataset.jobid;
+    if (btn.classList.contains('pause-btn')) {
+      fetch(`/api/jobs/${jobId}/pause`, { method: 'POST' }).catch(() => {});
+      showToast('⏸️ Pausing download...');
+    } else if (btn.classList.contains('resume-btn')) {
+      fetch(`/api/jobs/${jobId}/resume`, { method: 'POST' }).catch(() => {});
+      showToast('▶️ Resuming download...');
+    } else if (btn.classList.contains('delete-btn')) {
+      fetch(`/api/jobs/${jobId}`, { method: 'DELETE' }).catch(() => {});
+      showToast('🗑️ Removing download...');
+    } else if (btn.classList.contains('reveal-btn')) {
+      fetch(`/api/jobs/${jobId}/reveal`, { method: 'POST' }).catch(() => {});
+      showToast('📂 Revealing in macOS Finder...');
+    } else if (btn.classList.contains('open-btn')) {
+      fetch(`/api/jobs/${jobId}/open`, { method: 'POST' }).catch(() => {});
+    }
+  }
+
+  if (activeJobsContainer) activeJobsContainer.addEventListener('click', handleActionClick);
+  if (completedJobsContainer) completedJobsContainer.addEventListener('click', handleActionClick);
+}
+
+// In-place Job Card Updater (eliminates DOM thrashing and CPU lag)
+function updateJobCardInPlace(card, job) {
+  const isDownloading = job.status === 'downloading';
+  const isPaused = job.status === 'paused';
+
+  let statusBadge = '';
+  if (job.status === 'downloading') statusBadge = '<span style="color:var(--accent-cyan)">Downloading</span>';
+  else if (job.status === 'assembling') statusBadge = '<span style="color:var(--accent-amber)">Muxing & Merging...</span>';
+  else if (job.status === 'paused') statusBadge = '<span style="color:var(--accent-amber)">Paused</span>';
+  else if (job.status === 'completed') statusBadge = '<span style="color:var(--accent-green)">Completed</span>';
+  else if (job.status === 'error') statusBadge = `<span style="color:var(--accent-red)">Error: ${escapeHtml(job.error_message || 'Failed')}</span>`;
+
+  // Meta line update
+  const metaLine = card.querySelector('.job-meta-line');
+  if (metaLine) {
+    const clipHtml = (job.clip_start || job.clip_end) ? ` &bull; <span class="clip-badge">✂️ Clip: ${job.clip_start || '00:00'} - ${job.clip_end || 'end'}</span>` : '';
+    metaLine.innerHTML = `${statusBadge} &bull; ${job.downloaded_str} of ${job.total_str} (${job.progress}%)${clipHtml}`;
+  }
+
+  // Progress Bar update
+  const progressBar = card.querySelector('.progress-bar-fill');
+  if (progressBar) {
+    progressBar.style.width = `${job.progress}%`;
+  }
+
+  // Multi-thread Segments update
+  if (job.segments && job.segments.length > 0) {
+    const segmentBlocks = card.querySelectorAll('.segment-block');
+    if (segmentBlocks.length === job.segments.length) {
+      job.segments.forEach((seg, idx) => {
+        const fill = segmentBlocks[idx].querySelector('.segment-fill');
+        if (fill) fill.style.width = `${seg.progress_pct}%`;
+      });
+    }
+  }
+
+  // Telemetry (Speed & ETA) update
+  let telemetry = card.querySelector('.job-telemetry-row');
+  if (isDownloading) {
+    if (!telemetry) {
+      telemetry = document.createElement('div');
+      telemetry.className = 'job-telemetry-row';
+      card.appendChild(telemetry);
+    }
+    telemetry.innerHTML = `
+      <span class="speed-badge">⚡️ ${job.speed_str}</span>
+      <span>ETA: ${job.eta_str}</span>
+    `;
+  } else if (telemetry) {
+    telemetry.remove();
+  }
+
+  // Pause / Resume Button swap
+  const pauseBtn = card.querySelector('.pause-btn');
+  const resumeBtn = card.querySelector('.resume-btn');
+  if (isDownloading && resumeBtn) {
+    resumeBtn.outerHTML = `
+      <button class="action-btn pause-btn" data-jobid="${job.id}" title="Pause">
+        <svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+      </button>
+    `;
+  } else if (isPaused && pauseBtn) {
+    pauseBtn.outerHTML = `
+      <button class="action-btn resume-btn" data-jobid="${job.id}" title="Resume">
+        <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+      </button>
+    `;
+  }
+}
+
 // Render Job Cards
 function renderJobs() {
   const jobList = Object.values(state.jobs).sort((a, b) => b.created_at - a.created_at);
   const activeJobs = jobList.filter(j => ['queued', 'downloading', 'assembling', 'paused'].includes(j.status));
   const completedJobs = jobList.filter(j => ['completed', 'error', 'cancelled'].includes(j.status));
 
-  activeBadge.textContent = activeJobs.length;
-  completedBadge.textContent = completedJobs.length;
+  if (activeBadge) activeBadge.textContent = activeJobs.length;
+  if (completedBadge) completedBadge.textContent = completedJobs.length;
 
   // Render Active
-  if (activeJobs.length === 0) {
-    activeJobsContainer.innerHTML = `
-      <div class="empty-state">
-        <div class="empty-icon">⚡️</div>
-        <h3>No Active Downloads</h3>
-        <p>Paste a video or direct file URL above to initiate an accelerated download.</p>
-      </div>
-    `;
-  } else {
-    activeJobsContainer.innerHTML = activeJobs.map(j => renderJobCard(j)).join('');
+  if (activeJobsContainer) {
+    if (activeJobs.length === 0) {
+      activeJobsContainer.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-icon">⚡️</div>
+          <h3>No Active Downloads</h3>
+          <p>Paste a video or direct file URL above to initiate an accelerated download.</p>
+        </div>
+      `;
+    } else {
+      activeJobsContainer.innerHTML = activeJobs.map(j => renderJobCard(j)).join('');
+    }
   }
 
   // Render Completed
-  if (completedJobs.length === 0) {
-    completedJobsContainer.innerHTML = `
-      <div class="empty-state">
-        <div class="empty-icon">📁</div>
-        <h3>No Completed Downloads Yet</h3>
-        <p>Your finished downloads and muxed media files will be organized here.</p>
-      </div>
-    `;
-  } else {
-    completedJobsContainer.innerHTML = completedJobs.map(j => renderJobCard(j)).join('');
+  if (completedJobsContainer) {
+    if (completedJobs.length === 0) {
+      completedJobsContainer.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-icon">📁</div>
+          <h3>No Completed Downloads Yet</h3>
+          <p>Your finished downloads and muxed media files will be organized here.</p>
+        </div>
+      `;
+    } else {
+      completedJobsContainer.innerHTML = completedJobs.map(j => renderJobCard(j)).join('');
+    }
   }
-
-  attachJobActionListeners();
 }
 
 function renderJobCard(job) {
@@ -1327,28 +1439,6 @@ function renderJobCard(job) {
       ` : ''}
     </div>
   `;
-}
-
-function attachJobActionListeners() {
-  document.querySelectorAll('.pause-btn').forEach(btn => {
-    btn.onclick = () => fetch(`/api/jobs/${btn.dataset.jobid}/pause`, { method: 'POST' });
-  });
-
-  document.querySelectorAll('.resume-btn').forEach(btn => {
-    btn.onclick = () => fetch(`/api/jobs/${btn.dataset.jobid}/resume`, { method: 'POST' });
-  });
-
-  document.querySelectorAll('.reveal-btn').forEach(btn => {
-    btn.onclick = () => fetch(`/api/jobs/${btn.dataset.jobid}/reveal`, { method: 'POST' });
-  });
-
-  document.querySelectorAll('.open-btn').forEach(btn => {
-    btn.onclick = () => fetch(`/api/jobs/${btn.dataset.jobid}/open`, { method: 'POST' });
-  });
-
-  document.querySelectorAll('.delete-btn').forEach(btn => {
-    btn.onclick = () => fetch(`/api/jobs/${btn.dataset.jobid}`, { method: 'DELETE' });
-  });
 }
 
 function showToast(message, type = 'info') {

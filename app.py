@@ -242,9 +242,28 @@ async def inspect_url(req: InspectRequest):
                 detail=f"Unable to analyze URL as media or direct file: {str(media_err)}"
             )
 
+_proxy_client: Optional[httpx.AsyncClient] = None
+
+def get_proxy_client() -> httpx.AsyncClient:
+    global _proxy_client
+    if _proxy_client is None or _proxy_client.is_closed:
+        cookies = None
+        cookie_path = os.path.join(DOWNLOADS_DIR, "cookies.txt")
+        if os.path.exists(cookie_path) and os.path.getsize(cookie_path) > 10:
+            import http.cookiejar
+            jar = http.cookiejar.MozillaCookieJar(cookie_path)
+            try:
+                jar.load(ignore_discard=True, ignore_expires=True)
+                cookies = jar
+            except Exception:
+                pass
+        limits = httpx.Limits(max_keepalive_connections=20, max_connections=50, keepalive_expiry=60.0)
+        _proxy_client = httpx.AsyncClient(timeout=30.0, follow_redirects=True, cookies=cookies, limits=limits)
+    return _proxy_client
+
 @app.get("/api/stream/proxy")
 async def stream_proxy(url: str, request: Request):
-    """Proxies media stream chunks with range header support for seamless desktop preview."""
+    """Proxies media stream chunks with range header support and connection pooling for instant desktop preview."""
     if not url:
         raise HTTPException(status_code=400, detail="URL missing")
     
@@ -256,19 +275,7 @@ async def stream_proxy(url: str, request: Request):
         headers["Range"] = range_header
 
     try:
-        # Load authenticated Netscape cookies from downloads/cookies.txt if available
-        cookies = None
-        cookie_path = os.path.join(DOWNLOADS_DIR, "cookies.txt")
-        if os.path.exists(cookie_path) and os.path.getsize(cookie_path) > 10:
-            import http.cookiejar
-            jar = http.cookiejar.MozillaCookieJar(cookie_path)
-            try:
-                jar.load(ignore_discard=True, ignore_expires=True)
-                cookies = jar
-            except Exception:
-                pass
-
-        client = httpx.AsyncClient(timeout=30.0, follow_redirects=True, cookies=cookies)
+        client = get_proxy_client()
         req = client.build_request("GET", url, headers=headers)
         resp = await client.send(req, stream=True)
 
@@ -287,7 +294,6 @@ async def stream_proxy(url: str, request: Request):
                     yield chunk
             finally:
                 await resp.aclose()
-                await client.aclose()
 
         return StreamingResponse(
             body_stream(),
