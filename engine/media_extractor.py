@@ -36,6 +36,8 @@ class MediaExtractor:
             "socket_timeout": 30,
             "retries": 10,
             "fragment_retries": 10,
+            "continuedl": True,    # Resume partial downloads from .part files
+            "nopart": False,       # Keep .part files so resume works
         }
 
         # Configure Node.js JS runtime and remote component challenge solver for YouTube n-sig
@@ -262,23 +264,7 @@ class MediaExtractor:
             c_end = clip_end if (clip_end and clip_end > c_start) else float("inf")
             opts["download_ranges"] = download_range_func(None, [(c_start, c_end)])
             opts["force_keyframes_at_cuts"] = True
-        else:
-            # For full downloads, enable 16-connection parallel accelerator via aria2c if available
-            aria2_bin = shutil.which("aria2c") or ("/opt/homebrew/bin/aria2c" if os.path.exists("/opt/homebrew/bin/aria2c") else None)
-            if aria2_bin:
-                opts["external_downloader"] = {"default": aria2_bin}
-                opts["external_downloader_args"] = {
-                    "aria2c": [
-                        "-x16",
-                        "-s16",
-                        "-j16",
-                        "-k1M",
-                        "--min-split-size=1M",
-                        "--file-allocation=none",
-                        "--summary-interval=1"
-                    ]
-                }
-
+        # No aria2c — use yt-dlp native concurrent fragments for reliable progress hooks
         # Enable multi-threaded fragment downloads
         opts["concurrent_fragment_downloads"] = 16
 
@@ -393,71 +379,77 @@ class MediaExtractor:
 
         opts["progress_hooks"] = [ydl_hook]
 
-        # Background watcher for clipping / FFmpegFD downloads that do not invoke progress hooks
+        # Background watcher — fires for clips AND for any download where progress_hook is silent
         stop_watcher = threading.Event()
-        if is_clipping:
-            def clip_progress_watcher():
-                last_size = 0
-                last_time = time.time()
+
+        def file_progress_watcher():
+            last_size = 0
+            last_time = time.time()
+            if is_clipping:
                 clip_dur = (clip_end or 60.0) - (clip_start or 0.0)
                 if clip_dur <= 0:
                     clip_dur = 60.0
                 est_total_bytes = max(1024 * 1024, int(clip_dur * 250_000))
+            else:
+                est_total_bytes = 0  # unknown for full downloads; will grow from observed size
 
-                while not stop_watcher.is_set():
-                    time.sleep(0.25)
-                    if cancel_event and cancel_event.is_set():
-                        break
-                    if pause_event and pause_event.is_set():
-                        break
-                    if time.time() - last_progress_time < 0.5:
+            while not stop_watcher.is_set():
+                time.sleep(0.25)
+                if cancel_event and cancel_event.is_set():
+                    break
+                if pause_event and pause_event.is_set():
+                    break
+                # Only fire watcher when ydl_hook has been silent >0.5s (avoid double-counting)
+                if time.time() - last_progress_time < 0.5:
+                    continue
+
+                try:
+                    matched_files = [
+                        os.path.join(self.download_dir, f)
+                        for f in os.listdir(self.download_dir)
+                        if clean_name in f and not f.endswith(".json")
+                    ]
+                    if not matched_files:
                         continue
+                    current_size = sum(os.path.getsize(f) for f in matched_files if os.path.isfile(f))
+                    now = time.time()
+                    dt = now - last_time
+                    if dt >= 0.25:
+                        speed = max(0.0, (current_size - last_size) / dt)
+                        last_size = current_size
+                        last_time = now
 
-                    try:
-                        matched_files = [
-                            os.path.join(self.download_dir, f)
-                            for f in os.listdir(self.download_dir)
-                            if clean_name in f and not f.endswith(".json")
-                        ]
-                        if not matched_files:
-                            continue
-                        current_size = sum(os.path.getsize(f) for f in matched_files if os.path.isfile(f))
-                        now = time.time()
-                        dt = now - last_time
-                        if dt >= 0.25:
-                            speed = max(0.0, (current_size - last_size) / dt)
-                            last_size = current_size
-                            last_time = now
+                        if est_total_bytes <= 0:
+                            est_total_bytes = max(current_size, 10 * 1024 * 1024)
+                        est_total = max(est_total_bytes, int(current_size * 1.05))
+                        pct = min(98.0, max(5.0, (current_size / est_total) * 100.0)) if est_total > 0 else 0.0
+                        eta = int((est_total - current_size) / speed) if speed > 0 else 0
 
-                            est_total = max(est_total_bytes, int(current_size * 1.05))
-                            pct = min(98.0, max(5.0, (current_size / est_total) * 100.0))
-                            eta = int((est_total - current_size) / speed) if speed > 0 else 0
+                        lanes = []
+                        for i in range(16):
+                            j = ((i * 7) % 7) - 3
+                            lp = min(100.0, max(0.0, pct + j if pct < 95.0 else pct))
+                            lanes.append({
+                                "index": i + 1,
+                                "progress_pct": round(lp, 1),
+                                "status": "completed" if lp >= 100.0 else ("downloading" if lp > 0 else "queued")
+                            })
 
-                            lanes = []
-                            for i in range(16):
-                                j = ((i * 7) % 7) - 3
-                                lp = min(100.0, max(0.0, pct + j if pct < 95.0 else pct))
-                                lanes.append({
-                                    "index": i + 1,
-                                    "progress_pct": round(lp, 1),
-                                    "status": "completed" if lp >= 100.0 else ("downloading" if lp > 0 else "queued")
-                                })
+                        if progress_callback:
+                            progress_callback({
+                                "status": "downloading",
+                                "progress": round(pct, 1),
+                                "downloaded_bytes": current_size,
+                                "total_bytes": est_total,
+                                "speed": speed,
+                                "eta": eta,
+                                "segments": lanes
+                            })
+                except Exception:
+                    pass
 
-                            if progress_callback:
-                                progress_callback({
-                                    "status": "downloading",
-                                    "progress": round(pct, 1),
-                                    "downloaded_bytes": current_size,
-                                    "total_bytes": est_total,
-                                    "speed": speed,
-                                    "eta": eta,
-                                    "segments": lanes
-                                })
-                    except Exception:
-                        pass
-
-            watcher_thread = threading.Thread(target=clip_progress_watcher, daemon=True)
-            watcher_thread.start()
+        watcher_thread = threading.Thread(target=file_progress_watcher, daemon=True)
+        watcher_thread.start()
 
         try:
             with yt_dlp.YoutubeDL(opts) as ydl:

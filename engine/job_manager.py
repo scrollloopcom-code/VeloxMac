@@ -81,7 +81,9 @@ class Job:
             "error_message": self.error_message,
             "segments": self.segments,
             "clip_start": self.clip_start,
-            "clip_end": self.clip_end
+            "clip_end": self.clip_end,
+            "format_info": self.format_info,
+            "browser_cookies": self.browser_cookies,
         }
 
     @staticmethod
@@ -145,7 +147,11 @@ class JobManager:
                         title=item["title"],
                         job_type=item["type"],
                         output_dir=self.download_dir,
-                        thumbnail=item.get("thumbnail", "")
+                        thumbnail=item.get("thumbnail", ""),
+                        format_info=item.get("format_info", {}),
+                        browser_cookies=item.get("browser_cookies"),
+                        clip_start=item.get("clip_start"),
+                        clip_end=item.get("clip_end"),
                     )
                     job.status = item.get("status", "completed")
                     if job.status == "downloading":
@@ -238,11 +244,20 @@ class JobManager:
         def progress_cb(data: Dict[str, Any]):
             status = data.get("status")
             if status == "downloading":
-                job.progress = data.get("progress", 0.0)
-                job.downloaded_bytes = data.get("downloaded_bytes", 0)
-                job.total_bytes = data.get("total_bytes", 0)
-                job.speed = data.get("speed", 0.0)
-                job.eta = data.get("eta", 0)
+                new_dl = data.get("downloaded_bytes", 0) or 0
+                new_total = data.get("total_bytes", 0) or 0
+                # Anti-backslide: never let displayed bytes decrease (fragment-hook fluctuation)
+                if new_dl > 0:
+                    job.downloaded_bytes = max(job.downloaded_bytes, new_dl)
+                if new_total > 0:
+                    job.total_bytes = max(job.total_bytes, new_total)
+                # Recompute progress from stable bytes
+                if job.total_bytes > 0:
+                    job.progress = min(99.0, (job.downloaded_bytes / job.total_bytes) * 100.0)
+                else:
+                    job.progress = data.get("progress", job.progress)
+                job.speed = data.get("speed", 0.0) or 0.0
+                job.eta = data.get("eta", 0) or 0
                 job.segments = data.get("segments", [])
             elif status == "muxing":
                 job.status = "assembling"
