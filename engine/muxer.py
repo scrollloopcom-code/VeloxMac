@@ -33,12 +33,31 @@ FFPROBE_PATH = find_ffprobe()
 def is_ffmpeg_available() -> bool:
     return FFMPEG_PATH is not None
 
-def run_ffmpeg(args: list[str], timeout: Optional[int] = None) -> subprocess.CompletedProcess:
-    """Runs ffmpeg with provided arguments."""
+def run_ffmpeg(args: list[str], timeout: Optional[int] = 300) -> subprocess.CompletedProcess:
+    """Runs ffmpeg with provided arguments, hard memory cap and thread limits."""
     if not FFMPEG_PATH:
         raise RuntimeError("ffmpeg binary not found on macOS system")
-    cmd = [FFMPEG_PATH] + args
-    return subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+    # Prepend thread-limiting flags before user args so user args can override
+    # -threads 2 caps CPU threads; -hide_banner reduces noise
+    base_args = ["-threads", "2", "-hide_banner"]
+    cmd = [FFMPEG_PATH] + base_args + args
+
+    import resource
+    def set_limits():
+        # Cap virtual memory at 2 GB to prevent runaway ffmpeg RAM usage
+        two_gb = 2 * 1024 * 1024 * 1024
+        try:
+            resource.setrlimit(resource.RLIMIT_AS, (two_gb, two_gb))
+        except Exception:
+            pass
+
+    return subprocess.run(
+        cmd,
+        capture_output=True,
+        text=True,
+        timeout=timeout,
+        preexec_fn=set_limits,
+    )
 
 def get_media_duration(file_path: str) -> Optional[float]:
     """Inspects the exact media duration in seconds using ffprobe."""
@@ -68,7 +87,7 @@ def trim_media_file(input_file: str, output_file: str, start_sec: float, end_sec
         args += ["-to", str(end_sec)]
     args += ["-i", input_file, "-c", "copy", output_file]
 
-    res = run_ffmpeg(args)
+    res = run_ffmpeg(args, timeout=180)
     if res.returncode == 0 and os.path.exists(output_file) and os.path.getsize(output_file) > 0:
         return True
 
@@ -77,5 +96,5 @@ def trim_media_file(input_file: str, output_file: str, start_sec: float, end_sec
     if end_sec is not None and end_sec > start_sec:
         args += ["-to", str(end_sec)]
     args += ["-i", input_file, output_file]
-    res = run_ffmpeg(args)
+    res = run_ffmpeg(args, timeout=300)
     return res.returncode == 0 and os.path.exists(output_file) and os.path.getsize(output_file) > 0
