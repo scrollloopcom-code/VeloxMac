@@ -8,7 +8,7 @@ import time
 import uuid
 from typing import Any, Callable, Dict, List, Optional
 
-from engine.media_extractor import MediaExtractor, JobPausedException
+from engine.media_extractor import MediaExtractor, JobPausedException, JobCancelledException
 from engine.segmented_downloader import SegmentedDownloader
 
 class Job:
@@ -282,6 +282,10 @@ class JobManager:
                 job.downloaded_bytes = job.total_bytes
         except JobPausedException:
             job.status = "paused"
+            job.speed = 0.0
+            job.eta = 0
+        except JobCancelledException:
+            job.status = "cancelled"
             job.speed = 0.0
             job.eta = 0
         except Exception as e:

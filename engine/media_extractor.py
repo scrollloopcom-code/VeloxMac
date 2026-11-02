@@ -13,6 +13,10 @@ class JobPausedException(Exception):
     """Raised when a download job is paused by the user."""
     pass
 
+class JobCancelledException(Exception):
+    """Raised when a download job is cancelled by the user."""
+    pass
+
 class MediaExtractor:
     """Handles metadata extraction and multi-stream media downloads using yt-dlp
     with native macOS ffmpeg post-processing and resilient client fallbacks.
@@ -310,7 +314,7 @@ class MediaExtractor:
         def ydl_hook(d: Dict[str, Any]):
             nonlocal last_progress_time
             if cancel_event and cancel_event.is_set():
-                raise KeyboardInterrupt("Download cancelled by user")
+                raise JobCancelledException("Download cancelled by user")
             if pause_event and pause_event.is_set():
                 raise JobPausedException("Download paused by user")
 
@@ -324,18 +328,45 @@ class MediaExtractor:
 
                 downloaded = d.get("downloaded_bytes", 0)
                 total = d.get("total_bytes") or d.get("total_bytes_estimate") or 0
+                frag_index = d.get("fragment_index")
+                frag_count = d.get("fragment_count")
                 speed = d.get("speed") or 0
                 eta = d.get("eta") or 0
 
-                pct = (downloaded / total * 100.0) if total > 0 else 0.0
+                # Compute percentage
+                if total > 0:
+                    pct = (downloaded / total * 100.0)
+                elif frag_count and frag_count > 0:
+                    frag_idx_val = frag_index or 0
+                    pct = (float(frag_idx_val) / float(frag_count)) * 100.0
+                    if downloaded > 0 and frag_idx_val > 0:
+                        total = int((downloaded / frag_idx_val) * frag_count)
+                elif is_clipping and downloaded > 0:
+                    # When clipping ranges without declared total, estimate progress
+                    pct = min(98.0, max(5.0, (downloaded / (10 * 1024 * 1024)) * 30.0))
+                    total = max(downloaded, int(downloaded * 1.2))
+                else:
+                    pct = 0.0
 
-                # 16-Segment visualization: all 16 parallel threads advance simultaneously
+                pct = min(99.0, max(0.0, pct))
+
+                # 16-Segment visualization: all 16 parallel threads advance dynamically
                 num_lanes = 16
                 segments = []
                 for i in range(num_lanes):
-                    # Parallel connections show active progress across threads
-                    jitter = ((i * 7) % 7) - 3
-                    lane_pct = min(100.0, max(0.0, pct + jitter if pct < 98.0 else pct))
+                    if frag_count and frag_index:
+                        # Map fragments across threads
+                        active_lane = (frag_index - 1) % num_lanes
+                        if i < active_lane:
+                            lane_pct = min(100.0, pct + 4.0)
+                        elif i == active_lane:
+                            lane_pct = pct
+                        else:
+                            lane_pct = max(0.0, pct - 4.0)
+                    else:
+                        jitter = ((i * 7) % 7) - 3
+                        lane_pct = min(100.0, max(0.0, pct + jitter if pct < 98.0 else pct))
+
                     segments.append({
                         "index": i + 1,
                         "progress_pct": round(lane_pct, 1),
