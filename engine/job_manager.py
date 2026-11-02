@@ -48,7 +48,10 @@ class Job:
         self.output_path = ""
         self.created_at = time.time()
         self.completed_at = 0.0
-        self.segments: List[Dict[str, Any]] = []
+        self.segments: List[Dict[str, Any]] = [
+            {"index": i + 1, "progress_pct": 0.0, "status": "queued"}
+            for i in range(16)
+        ]
 
         # Cancellation & Pause primitives
         self.cancel_event = threading.Event()

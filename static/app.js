@@ -108,16 +108,6 @@ function setupEventListeners() {
     showToast('Downloads folder: ~/Downloads/VeloxDownloads');
   });
 
-  // 1-Click Sync Handlers
-  const quickSyncBtn = document.getElementById('quickSyncBtn');
-  const modalOneClickSyncBtn = document.getElementById('modalOneClickSyncBtn');
-  if (quickSyncBtn) {
-    quickSyncBtn.addEventListener('click', () => launch1ClickSync());
-  }
-  if (modalOneClickSyncBtn) {
-    modalOneClickSyncBtn.addEventListener('click', () => launch1ClickSync());
-  }
-
   const openExtFolderBtn = document.getElementById('openExtFolderBtn');
   if (openExtFolderBtn) {
     openExtFolderBtn.addEventListener('click', async () => {
@@ -570,50 +560,7 @@ async function uploadCookieText(text) {
   }
 }
 
-let isCapturingCookies = false;
 let pendingRetryUrl = null;
-
-async function launch1ClickSync() {
-  if (isCapturingCookies) {
-    showToast('YouTube sync window is already open! Please check your open windows.', 'info');
-    return;
-  }
-  
-  isCapturingCookies = true;
-  const quickBtn = document.getElementById('quickSyncBtn');
-  const modalBtn = document.getElementById('modalOneClickSyncBtn');
-  const modalText = document.getElementById('modalSyncBtnText');
-  const modalSpinner = document.getElementById('modalSyncSpinner');
-
-  if (quickBtn) quickBtn.innerHTML = '<span class="dot sync-dot"></span> ⏳ Sync Window Open...';
-  if (modalText) modalText.innerText = '⏳ Window Open: Sign in & Click Save...';
-  if (modalSpinner) modalSpinner.style.display = 'inline-block';
-
-  showToast('⚡ Opening native YouTube window... Log in or click "Save Cookies & Close" in the window!');
-
-  try {
-    const resp = await fetch('/api/cookies/capture', { method: 'POST' });
-    const data = await resp.json();
-    if (!resp.ok) {
-      throw new Error(data.detail || 'Failed to open window');
-    }
-  } catch (err) {
-    showToast(`Error: ${err.message}`, 'error');
-    resetSyncButtonStates();
-  }
-}
-
-function resetSyncButtonStates() {
-  isCapturingCookies = false;
-  const quickBtn = document.getElementById('quickSyncBtn');
-  const modalBtn = document.getElementById('modalOneClickSyncBtn');
-  const modalText = document.getElementById('modalSyncBtnText');
-  const modalSpinner = document.getElementById('modalSyncSpinner');
-
-  if (quickBtn) quickBtn.innerHTML = '<span class="dot sync-dot"></span> ⚡ 1-Click Sync';
-  if (modalText) modalText.innerText = '⚡ Open YouTube Window & Sync Cookies';
-  if (modalSpinner) modalSpinner.style.display = 'none';
-}
 
 function renderBotGuardError(errorMsg, failedUrl) {
   pendingRetryUrl = failedUrl;
@@ -622,27 +569,20 @@ function renderBotGuardError(errorMsg, failedUrl) {
     <div class="botguard-alert-box">
       <div class="botguard-alert-title">
         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-        <span>YouTube BotGuard Verification Required</span>
+        <span>YouTube Sign-In Required (BotGuard)</span>
       </div>
       <p class="botguard-alert-desc">
-        YouTube detected this IP as automated (<em>"Sign in to confirm you’re not a bot"</em>). 
-        Click the <strong>1-Click YouTube Login & Sync</strong> button below to open a native window, verify/log in, and automatically bypass BotGuard!
+        YouTube requires authentication for this link. Use the <strong>VeloxMac Browser Extension</strong> to sync cookies directly from your browser, or import a cookies.txt file!
       </p>
       <div class="botguard-action-row">
         <button type="button" class="sync-large-btn" id="inlineSyncBtn" style="margin: 0; padding: 10px 20px;">
-          ⚡ 1-Click YouTube Login & Sync
-        </button>
-        <button type="button" class="upload-cookie-btn" id="inlineMoreCookieBtn" style="padding: 10px 16px;">
-          Manual Cookie Options
+          🍪 Open Cookies & Extension Manager
         </button>
       </div>
     </div>
   `;
 
   document.getElementById('inlineSyncBtn').addEventListener('click', () => {
-    launch1ClickSync();
-  });
-  document.getElementById('inlineMoreCookieBtn').addEventListener('click', () => {
     document.getElementById('cookieModal').style.display = 'flex';
   });
 }
@@ -1191,7 +1131,6 @@ function initWebSocket() {
         delete state.jobs[data.job_id];
         renderJobs();
       } else if (data.type === 'cookies_updated') {
-        resetSyncButtonStates();
         checkCookieStatus();
         if (data.count > 0) {
           showToast(`✅ Successfully synced ${data.count} YouTube cookies! BotGuard bypassed.`, 'success');
@@ -1278,16 +1217,33 @@ function updateJobCardInPlace(card, job) {
   const progressBar = card.querySelector('.progress-bar-fill');
   if (progressBar) progressBar.style.width = `${job.progress}%`;
 
-  // Segment bars in-place update
-  if (job.segments && job.segments.length > 0) {
-    const segmentBlocks = card.querySelectorAll('.segment-block');
-    if (segmentBlocks.length === job.segments.length) {
+  // Segment bars in-place update (auto-creates if missing so 2+ downloads show threads reliably)
+  if (job.segments && job.segments.length > 0 && isActive) {
+    let viz = card.querySelector('.segment-visualizer');
+    let segmentBlocks = card.querySelectorAll('.segment-block');
+    if (!viz || segmentBlocks.length !== job.segments.length) {
+      const progressRow = card.querySelector('.job-progress-row');
+      if (progressRow) {
+        if (viz) viz.remove();
+        viz = document.createElement('div');
+        viz.className = 'segment-visualizer';
+        viz.innerHTML = job.segments.map((s, i) => `
+          <div class="segment-block" title="Thread ${i+1}: ${Math.round(s.progress_pct || 0)}%">
+            <div class="segment-fill" style="width: ${s.progress_pct || 0}%"></div>
+          </div>
+        `).join('');
+        progressRow.appendChild(viz);
+      }
+    } else {
       job.segments.forEach((seg, idx) => {
         const fill = segmentBlocks[idx].querySelector('.segment-fill');
         if (fill) fill.style.width = `${seg.progress_pct}%`;
         segmentBlocks[idx].title = `Thread ${idx+1}: ${Math.round(seg.progress_pct)}%`;
       });
     }
+  } else if (!isActive) {
+    const viz = card.querySelector('.segment-visualizer');
+    if (viz) viz.remove();
   }
 
   // Telemetry row

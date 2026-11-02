@@ -24,9 +24,6 @@
       </div>
       
       <div class="system-status">
-        <button class="status-pill sync-pill" id="quickSyncBtn" title="1-Click YouTube Login & Cookie Sync">
-          <span class="dot sync-dot"></span> ⚡ 1-Click Sync
-        </button>
         <button class="status-pill cookie-pill" id="cookieStatusBtn" style="cursor:pointer;" title="Configure YouTube Cookies">
           <span class="dot" id="cookieDot" style="background:#f39c12"></span> <span id="cookieLabel">Cookies: None</span>
         </button>
@@ -190,29 +187,17 @@
             </div>
           </div>
 
-          <!-- Column 2: In-App Sign-In & File Import -->
+          <!-- Column 2: File Import & Manual Paste -->
           <div class="desktop-col right-col">
-            <!-- Native Login Card -->
-            <div class="cookie-method-card">
-              <div class="method-title">⚡ Option B: In-App Sign-In Window</div>
-              <p class="method-sub">
-                Opens an Apple WebKit window to YouTube. Sign in once, then click "Save Cookies & Close".
-              </p>
-              <button type="button" class="upload-cookie-btn primary" id="modalOneClickSyncBtn" style="width: 100%;">
-                <span class="btn-spinner" id="modalSyncSpinner" style="display: none;"></span>
-                <span id="modalSyncBtnText">🔑 Open YouTube Sign-In Window</span>
-              </button>
-            </div>
-
             <!-- Manual File / Paste Card -->
             <div class="cookie-method-card">
-              <div class="method-title">📁 Option C: Import / Paste cookies.txt</div>
+              <div class="method-title">📁 Option B: Import / Paste cookies.txt</div>
               <div class="manual-cookie-tabs">
                 <input type="file" id="cookieFileInput" accept=".txt" style="display: none;">
                 <button type="button" class="upload-cookie-btn" id="selectCookieFileBtn" style="margin-bottom: 8px; width: 100%;">
                   📂 Choose cookies.txt File
                 </button>
-                <textarea id="cookieTextInput" rows="2" placeholder="Or paste Netscape cookie string here..."></textarea>
+                <textarea id="cookieTextInput" rows="4" placeholder="Or paste Netscape cookie string here..."></textarea>
                 <button type="button" class="save-cookie-btn" id="saveCookieTextBtn" style="margin-top: 6px; width: 100%;">Save Text Cookies</button>
               </div>
             </div>

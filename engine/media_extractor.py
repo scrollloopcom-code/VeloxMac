@@ -393,34 +393,103 @@ class MediaExtractor:
 
         opts["progress_hooks"] = [ydl_hook]
 
-        with yt_dlp.YoutubeDL(opts) as ydl:
-            info = ydl.extract_info(url, download=True)
-            final_filename = ydl.prepare_filename(info)
-            if choice_type == "audio":
-                base, _ = os.path.splitext(final_filename)
-                target_ext = "mp3" if "mp3" in choice_id else "m4a"
-                final_filename = f"{base}.{target_ext}"
-            elif not final_filename.endswith(".mp4"):
-                base, _ = os.path.splitext(final_filename)
-                if os.path.exists(f"{base}.mp4"):
-                    final_filename = f"{base}.mp4"
+        # Background watcher for clipping / FFmpegFD downloads that do not invoke progress hooks
+        stop_watcher = threading.Event()
+        if is_clipping:
+            def clip_progress_watcher():
+                last_size = 0
+                last_time = time.time()
+                clip_dur = (clip_end or 60.0) - (clip_start or 0.0)
+                if clip_dur <= 0:
+                    clip_dur = 60.0
+                est_total_bytes = max(1024 * 1024, int(clip_dur * 250_000))
 
-            # Post-check: Only run ffmpeg trimming if download_ranges did not cut the file
-            if is_clipping and os.path.exists(final_filename):
-                actual_duration = get_media_duration(final_filename)
-                expected_clip_len = (clip_end or 0.0) - (clip_start or 0.0)
-                # If download_ranges was supported by the server, the duration already matches the clip!
-                # Only trim if the actual duration is significantly longer than the requested clip length
-                if actual_duration and expected_clip_len > 0 and (actual_duration > expected_clip_len + 4.0):
-                    trimmed_path = final_filename.replace(".mp4", "_trimmed.mp4") if final_filename.endswith(".mp4") else final_filename.replace(".mp3", "_trimmed.mp3")
-                    c_start = clip_start or 0.0
-                    if trim_media_file(final_filename, trimmed_path, c_start, clip_end):
-                        try:
-                            os.replace(trimmed_path, final_filename)
-                        except Exception:
-                            final_filename = trimmed_path
+                while not stop_watcher.is_set():
+                    time.sleep(0.25)
+                    if cancel_event and cancel_event.is_set():
+                        break
+                    if pause_event and pause_event.is_set():
+                        break
+                    if time.time() - last_progress_time < 0.5:
+                        continue
 
-            return final_filename
+                    try:
+                        matched_files = [
+                            os.path.join(self.download_dir, f)
+                            for f in os.listdir(self.download_dir)
+                            if clean_name in f and not f.endswith(".json")
+                        ]
+                        if not matched_files:
+                            continue
+                        current_size = sum(os.path.getsize(f) for f in matched_files if os.path.isfile(f))
+                        now = time.time()
+                        dt = now - last_time
+                        if dt >= 0.25:
+                            speed = max(0.0, (current_size - last_size) / dt)
+                            last_size = current_size
+                            last_time = now
+
+                            est_total = max(est_total_bytes, int(current_size * 1.05))
+                            pct = min(98.0, max(5.0, (current_size / est_total) * 100.0))
+                            eta = int((est_total - current_size) / speed) if speed > 0 else 0
+
+                            lanes = []
+                            for i in range(16):
+                                j = ((i * 7) % 7) - 3
+                                lp = min(100.0, max(0.0, pct + j if pct < 95.0 else pct))
+                                lanes.append({
+                                    "index": i + 1,
+                                    "progress_pct": round(lp, 1),
+                                    "status": "completed" if lp >= 100.0 else ("downloading" if lp > 0 else "queued")
+                                })
+
+                            if progress_callback:
+                                progress_callback({
+                                    "status": "downloading",
+                                    "progress": round(pct, 1),
+                                    "downloaded_bytes": current_size,
+                                    "total_bytes": est_total,
+                                    "speed": speed,
+                                    "eta": eta,
+                                    "segments": lanes
+                                })
+                    except Exception:
+                        pass
+
+            watcher_thread = threading.Thread(target=clip_progress_watcher, daemon=True)
+            watcher_thread.start()
+
+        try:
+            with yt_dlp.YoutubeDL(opts) as ydl:
+                info = ydl.extract_info(url, download=True)
+                final_filename = ydl.prepare_filename(info)
+                if choice_type == "audio":
+                    base, _ = os.path.splitext(final_filename)
+                    target_ext = "mp3" if "mp3" in choice_id else "m4a"
+                    final_filename = f"{base}.{target_ext}"
+                elif not final_filename.endswith(".mp4"):
+                    base, _ = os.path.splitext(final_filename)
+                    if os.path.exists(f"{base}.mp4"):
+                        final_filename = f"{base}.mp4"
+
+                # Post-check: Only run ffmpeg trimming if download_ranges did not cut the file
+                if is_clipping and os.path.exists(final_filename):
+                    actual_duration = get_media_duration(final_filename)
+                    expected_clip_len = (clip_end or 0.0) - (clip_start or 0.0)
+                    # If download_ranges was supported by the server, the duration already matches the clip!
+                    # Only trim if the actual duration is significantly longer than the requested clip length
+                    if actual_duration and expected_clip_len > 0 and (actual_duration > expected_clip_len + 4.0):
+                        trimmed_path = final_filename.replace(".mp4", "_trimmed.mp4") if final_filename.endswith(".mp4") else final_filename.replace(".mp3", "_trimmed.mp3")
+                        c_start = clip_start or 0.0
+                        if trim_media_file(final_filename, trimmed_path, c_start, clip_end):
+                            try:
+                                os.replace(trimmed_path, final_filename)
+                            except Exception:
+                                final_filename = trimmed_path
+
+                return final_filename
+        finally:
+            stop_watcher.set()
 
     @staticmethod
     def parse_time_str(t: Optional[str]) -> Optional[float]:
