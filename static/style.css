@@ -114,6 +114,13 @@ body {
 
 .app-title-group {
   display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1px;
+}
+
+.app-brand-row {
+  display: flex;
   align-items: center;
   gap: 8px;
 }
@@ -123,6 +130,23 @@ body {
   font-weight: 700;
   letter-spacing: -0.3px;
   color: #fff;
+}
+
+.app-brand-sub {
+  font-size: 10.5px;
+  color: var(--text-secondary);
+  font-weight: 500;
+  letter-spacing: 0.2px;
+}
+
+.app-brand-sub strong {
+  color: #fff;
+  font-weight: 700;
+}
+
+.app-brand-sub .author-tag {
+  color: var(--accent-cyan);
+  font-weight: 600;
 }
 
 .version-tag {
@@ -2266,4 +2290,394 @@ body {
   display: flex;
   justify-content: flex-end;
   gap: 12px;
+}
+
+/* ==========================================================================
+   Velox Brand Global Window Footer & Multi-Device Cookie Vault
+   ========================================================================== */
+
+.app-window-footer {
+  border-top: 1px solid var(--border-subtle);
+  padding: 8px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  background: rgba(9, 13, 22, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  z-index: 10;
+}
+
+.footer-brand-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-secondary);
+}
+
+.footer-bolt {
+  color: var(--accent-cyan);
+  font-size: 12px;
+}
+
+.footer-app {
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: -0.2px;
+}
+
+.footer-sep {
+  color: rgba(255, 255, 255, 0.2);
+}
+
+.footer-text strong {
+  color: #fff;
+}
+
+.footer-author {
+  color: var(--accent-cyan);
+  font-weight: 600;
+}
+
+.footer-fleet-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(0, 242, 254, 0.08);
+  border: 1px solid rgba(0, 242, 254, 0.22);
+  padding: 3px 12px;
+  border-radius: 12px;
+  color: var(--accent-cyan);
+  font-size: 11px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.footer-fleet-status:hover {
+  background: rgba(0, 242, 254, 0.16);
+  border-color: rgba(0, 242, 254, 0.45);
+  transform: translateY(-1px);
+}
+
+.modal-card.cookie-vault-modal-card {
+  width: 880px;
+  max-width: 94vw;
+  max-height: 88vh;
+}
+
+.vault-tabs-nav {
+  display: flex;
+  gap: 8px;
+  padding: 10px 22px 0;
+  border-bottom: 1px solid var(--border-subtle);
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.vault-tab-btn {
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 16px 11px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.vault-tab-btn:hover {
+  color: #fff;
+}
+
+.vault-tab-btn.active {
+  color: var(--accent-cyan);
+  border-bottom-color: var(--accent-cyan);
+}
+
+.status-actions-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.vault-toolbar-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border-subtle);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 5px 11px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.vault-toolbar-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: var(--accent-cyan);
+  color: var(--accent-cyan);
+}
+
+.vault-info-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(0, 242, 254, 0.04);
+  border: 1px solid rgba(0, 242, 254, 0.16);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 12px;
+  color: #94a3b8;
+  margin-bottom: 12px;
+  gap: 12px;
+}
+
+.vault-info-text code {
+  background: rgba(0, 0, 0, 0.4);
+  color: var(--accent-cyan);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+}
+
+.vault-refresh-btn {
+  background: rgba(0, 242, 254, 0.1);
+  border: 1px solid rgba(0, 242, 254, 0.3);
+  color: var(--accent-cyan);
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+.vault-refresh-btn:hover {
+  background: rgba(0, 242, 254, 0.2);
+}
+
+.vault-devices-container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 380px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.vault-loading-state {
+  text-align: center;
+  padding: 24px;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.vault-device-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  padding: 12px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: all 0.2s ease;
+}
+
+.vault-device-card:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.vault-device-card.active-profile {
+  background: rgba(0, 242, 254, 0.06);
+  border-color: rgba(0, 242, 254, 0.45);
+  box-shadow: 0 0 16px rgba(0, 242, 254, 0.12);
+}
+
+.vault-device-main {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.vault-os-icon {
+  font-size: 24px;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+}
+
+.device-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 2px;
+}
+
+.device-name-text {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.current-machine-tag {
+  background: rgba(46, 204, 113, 0.15);
+  border: 1px solid rgba(46, 204, 113, 0.35);
+  color: #2ecc71;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+.active-session-tag {
+  background: rgba(0, 242, 254, 0.15);
+  border: 1px solid rgba(0, 242, 254, 0.35);
+  color: var(--accent-cyan);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+.device-sub-row {
+  font-size: 11.5px;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.platform-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.plat-chip {
+  font-size: 9.5px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #cbd5e1;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.device-actions-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.vault-btn {
+  padding: 7px 14px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s ease;
+}
+
+.vault-btn.switch-btn {
+  background: linear-gradient(135deg, var(--accent-cyan), #0072ff);
+  color: #0b0f19;
+}
+
+.vault-btn.switch-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 242, 254, 0.4);
+}
+
+.vault-btn.active-badge {
+  background: rgba(0, 242, 254, 0.12);
+  color: var(--accent-cyan);
+  border: 1px solid rgba(0, 242, 254, 0.35);
+  cursor: default;
+}
+
+.vault-icon-btn {
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 11px;
+  transition: all 0.2s ease;
+}
+
+.vault-icon-btn:hover {
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.device-naming-box {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-bottom: 12px;
+}
+
+.naming-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.naming-hint {
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-weight: 400;
+}
+
+.naming-input-row {
+  display: flex;
+  gap: 8px;
+}
+
+.naming-field {
+  flex: 1;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  padding: 8px 12px;
+  color: #fff;
+  font-size: 12.5px;
+}
+
+.rename-save-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border-subtle);
+  color: #fff;
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.rename-save-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: var(--accent-cyan);
 }

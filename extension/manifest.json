@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "VeloxMac Cookie Bridge",
-  "version": "1.1.0",
-  "description": "Universal 1-Click Cookie Sync for YouTube, Instagram, Facebook, TikTok & X",
+  "name": "Velox Cookie Bridge (Scroll Loop)",
+  "version": "1.2.0",
+  "description": "Universal 1-Click Cookie Sync for Velox by Scroll Loop (Lahiru_nk)",
   "permissions": [
     "cookies",
     "activeTab"

@@ -11,7 +11,7 @@ import time
 import socket
 import threading
 import webview
-from version import APP_NAME, APP_VERSION
+from version import APP_NAME, APP_FULL_NAME, APP_VERSION, COMPANY_NAME, AUTHOR
 
 def is_port_in_use(port: int = 8899) -> bool:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -38,7 +38,7 @@ def main():
 
     # Open native desktop window (WebKit on macOS, Edge Chromium on Windows)
     win = webview.create_window(
-        title=f"{APP_NAME} — Next-Gen Media & IDM Downloader (v{APP_VERSION})",
+        title=f"{APP_FULL_NAME} — {AUTHOR} (v{APP_VERSION})",
         url="http://127.0.0.1:8899",
         width=1180,
         height=820,

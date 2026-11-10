@@ -31,6 +31,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initWebSocket();
   checkSystemStatus();
   checkCookieStatus();
+  loadCookieVaultDevices();
   setupEventListeners();
   setupTrimmerStudioListeners();
   setupJobActionDelegation();
@@ -133,7 +134,7 @@ function setupEventListeners() {
     });
   }
 
-  // Cookie Modal Handlers
+  // Cookie Modal Handlers & Multi-Device Vault Tabs
   const cookieModal = document.getElementById('cookieModal');
   const cookieStatusBtn = document.getElementById('cookieStatusBtn');
   const closeCookieModal = document.getElementById('closeCookieModal');
@@ -142,15 +143,102 @@ function setupEventListeners() {
   const saveCookieTextBtn = document.getElementById('saveCookieTextBtn');
   const cookieTextInput = document.getElementById('cookieTextInput');
   const clearCookieBtn = document.getElementById('clearCookieBtn');
+  const openVaultFolderBtn = document.getElementById('openVaultFolderBtn');
+  const refreshVaultBtn = document.getElementById('refreshVaultBtn');
+  const saveDeviceNameBtn = document.getElementById('saveDeviceNameBtn');
+  const customDeviceNameInput = document.getElementById('customDeviceNameInput');
+  const tabVaultDevicesBtn = document.getElementById('tabVaultDevicesBtn');
+  const tabSyncCookiesBtn = document.getElementById('tabSyncCookiesBtn');
+  const panelVaultDevices = document.getElementById('panelVaultDevices');
+  const panelSyncCookies = document.getElementById('panelSyncCookies');
+  const footerFleetStatus = document.getElementById('footerFleetStatus');
 
-  cookieStatusBtn.addEventListener('click', () => {
+  function openCookieModal(tab = 'vault') {
     cookieModal.style.display = 'flex';
     checkCookieStatus();
-  });
+    loadCookieVaultDevices();
+    if (tab === 'sync') {
+      switchVaultTab('sync');
+    } else {
+      switchVaultTab('vault');
+    }
+  }
+
+  function switchVaultTab(tab) {
+    if (tab === 'sync') {
+      if (tabSyncCookiesBtn) tabSyncCookiesBtn.classList.add('active');
+      if (tabVaultDevicesBtn) tabVaultDevicesBtn.classList.remove('active');
+      if (panelSyncCookies) panelSyncCookies.style.display = 'block';
+      if (panelVaultDevices) panelVaultDevices.style.display = 'none';
+    } else {
+      if (tabVaultDevicesBtn) tabVaultDevicesBtn.classList.add('active');
+      if (tabSyncCookiesBtn) tabSyncCookiesBtn.classList.remove('active');
+      if (panelVaultDevices) panelVaultDevices.style.display = 'block';
+      if (panelSyncCookies) panelSyncCookies.style.display = 'none';
+    }
+  }
+
+  if (tabVaultDevicesBtn) {
+    tabVaultDevicesBtn.addEventListener('click', () => switchVaultTab('vault'));
+  }
+  if (tabSyncCookiesBtn) {
+    tabSyncCookiesBtn.addEventListener('click', () => switchVaultTab('sync'));
+  }
+
+  cookieStatusBtn.addEventListener('click', () => openCookieModal('vault'));
+  if (footerFleetStatus) {
+    footerFleetStatus.addEventListener('click', () => openCookieModal('vault'));
+  }
 
   closeCookieModal.addEventListener('click', () => {
     cookieModal.style.display = 'none';
   });
+
+  if (openVaultFolderBtn) {
+    openVaultFolderBtn.addEventListener('click', async () => {
+      try {
+        await fetch('/api/vault/reveal', { method: 'POST' });
+        showToast('📁 Opened cookie vault folder in file manager');
+      } catch (e) {
+        showToast('Failed to open vault folder', 'error');
+      }
+    });
+  }
+
+  if (refreshVaultBtn) {
+    refreshVaultBtn.addEventListener('click', () => {
+      loadCookieVaultDevices();
+      showToast('🔄 Refreshed cookie vault devices');
+    });
+  }
+
+  if (saveDeviceNameBtn) {
+    saveDeviceNameBtn.addEventListener('click', async () => {
+      const newName = customDeviceNameInput ? customDeviceNameInput.value.trim() : '';
+      if (!newName) {
+        showToast('Please enter a device name', 'error');
+        return;
+      }
+      try {
+        const sysRes = await fetch('/api/system');
+        const sysData = await sysRes.json();
+        const devId = sysData.device_id;
+        const res = await fetch('/api/vault/rename', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ device_id: devId, name: newName })
+        });
+        if (res.ok) {
+          showToast(`✅ Saved current PC name as "${newName}"`);
+          loadCookieVaultDevices();
+        } else {
+          showToast('Failed to rename device', 'error');
+        }
+      } catch (e) {
+        showToast(`Error: ${e.message}`, 'error');
+      }
+    });
+  }
 
   selectCookieFileBtn.addEventListener('click', () => {
     cookieFileInput.click();
@@ -182,6 +270,7 @@ function setupEventListeners() {
       await fetch('/api/cookies', { method: 'DELETE' });
       showToast('Cookies cleared');
       checkCookieStatus();
+      loadCookieVaultDevices();
     } catch (e) {
       showToast('Failed to clear cookies', 'error');
     }
@@ -556,14 +645,19 @@ function openTrimmerStudio(info) {
 
 async function uploadCookieText(text) {
   try {
+    const devNameInput = document.getElementById('customDeviceNameInput');
+    const customName = devNameInput ? devNameInput.value.trim() : null;
+
     const resp = await fetch('/api/cookies', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ cookie_text: text })
+      body: JSON.stringify({ cookie_text: text, device_name: customName || undefined })
     });
     if (resp.ok) {
-      showToast('✅ Cookies applied successfully! YouTube BotGuard bypassed.');
+      const resJson = await resp.json();
+      showToast(`✅ ${resJson.message || 'Cookies saved to vault successfully!'}`);
       checkCookieStatus();
+      loadCookieVaultDevices();
     } else {
       const err = await resp.json();
       showToast(`Error: ${err.detail || 'Failed to save cookies'}`, 'error');
@@ -582,21 +676,24 @@ function renderBotGuardError(errorMsg, failedUrl) {
     <div class="botguard-alert-box">
       <div class="botguard-alert-title">
         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-        <span>YouTube Sign-In Required (BotGuard)</span>
+        <span>Authentication Required (BotGuard / Login)</span>
       </div>
       <p class="botguard-alert-desc">
-        YouTube requires authentication for this link. Use the <strong>VeloxMac Browser Extension</strong> to sync cookies directly from your browser, or import a cookies.txt file!
+        Authentication required for this link. Use the <strong>Velox Browser Extension</strong> to sync cookies from your browser, or select a saved machine profile from your Multi-Device Cookie Vault!
       </p>
       <div class="botguard-action-row">
         <button type="button" class="sync-large-btn" id="inlineSyncBtn" style="margin: 0; padding: 10px 20px;">
-          🍪 Open Cookies & Extension Manager
+          🔐 Open Multi-Device Cookie Vault
         </button>
       </div>
     </div>
   `;
 
   document.getElementById('inlineSyncBtn').addEventListener('click', () => {
-    document.getElementById('cookieModal').style.display = 'flex';
+    const cookieModal = document.getElementById('cookieModal');
+    if (cookieModal) cookieModal.style.display = 'flex';
+    checkCookieStatus();
+    loadCookieVaultDevices();
   });
 }
 
@@ -620,7 +717,7 @@ async function checkCookieStatus() {
         modalDot.style.boxShadow = '0 0 8px var(--accent-green)';
       }
       if (label) label.textContent = 'Cookies: Active';
-      if (statusText) statusText.innerHTML = `✅ <strong>YouTube Session Active</strong> &bull; Size: ${(data.size / 1024).toFixed(1)} KB (BotGuard Bypassed)`;
+      if (statusText) statusText.innerHTML = `✅ <strong>Session Active</strong> &bull; Size: ${(data.size / 1024).toFixed(1)} KB (BotGuard Bypassed)`;
       if (clearBtn) clearBtn.style.display = 'inline-block';
     } else {
       if (dot) {
@@ -637,6 +734,132 @@ async function checkCookieStatus() {
     }
   } catch (e) {}
 }
+
+async function loadCookieVaultDevices() {
+  const container = document.getElementById('vaultDevicesContainer');
+  const countBadge = document.getElementById('vaultDeviceCount');
+  const fleetTag = document.getElementById('footerFleetText');
+  const nameInput = document.getElementById('customDeviceNameInput');
+  if (!container) return;
+
+  try {
+    const resp = await fetch('/api/vault/devices');
+    const data = await resp.json();
+    const devices = data.devices || [];
+    if (countBadge) countBadge.textContent = devices.length;
+
+    const activeDev = devices.find(d => d.is_active_profile);
+    if (fleetTag) {
+      if (activeDev) {
+        fleetTag.innerHTML = `💻 Vault Active: <strong>${escapeHtml(activeDev.name)}</strong> (${activeDev.cookie_count} cookies)`;
+      } else {
+        fleetTag.textContent = '💻 Fleet Vault: No profile active';
+      }
+    }
+
+    const currentDev = devices.find(d => d.is_current_machine);
+    if (currentDev && nameInput && !nameInput.value) {
+      nameInput.value = currentDev.name || '';
+    }
+
+    if (devices.length === 0) {
+      container.innerHTML = `<div class="vault-loading-state">No device cookie profiles saved yet. Use the Sync tab to add this computer!</div>`;
+      return;
+    }
+
+    container.innerHTML = devices.map(dev => {
+      const isCur = dev.is_current_machine;
+      const isActive = dev.is_active_profile;
+      const osIcon = dev.os === 'macOS' ? '🍎' : (dev.os === 'Windows' ? '🪟' : '💻');
+      const cardClass = `vault-device-card ${isActive ? 'active-profile' : ''}`;
+      
+      const chips = (dev.platforms || []).map(p => `<span class="plat-chip">${escapeHtml(p)}</span>`).join('');
+      
+      return `
+        <div class="${cardClass}" id="vault-card-${dev.id}">
+          <div class="vault-device-main">
+            <div class="vault-os-icon" title="${escapeHtml(dev.os)}">${osIcon}</div>
+            <div class="vault-device-info">
+              <div class="device-title-row">
+                <span class="device-name-text">${escapeHtml(dev.name)}</span>
+                ${isCur ? `<span class="current-machine-tag">📍 This PC</span>` : ''}
+                ${isActive ? `<span class="active-session-tag">● Active Session</span>` : ''}
+              </div>
+              <div class="device-sub-row">
+                <span><code>${escapeHtml(dev.id)}</code></span>
+                <span>&bull;</span>
+                <span>${dev.cookie_count} cookies saved</span>
+                <span>&bull;</span>
+                <span>Last Synced: ${escapeHtml(dev.last_synced || 'Never')}</span>
+              </div>
+              <div class="platform-chips">
+                ${chips || '<span class="plat-chip" style="opacity:0.6;">No platforms indexed</span>'}
+              </div>
+            </div>
+          </div>
+          <div class="device-actions-row">
+            <button type="button" class="vault-icon-btn" onclick="renameVaultDevice('${dev.id}', '${escapeHtml(dev.name)}')" title="Rename device">
+              ✏️
+            </button>
+            ${isActive 
+              ? `<button type="button" class="vault-btn active-badge" disabled>✓ Active Downloader</button>`
+              : (dev.has_cookies 
+                  ? `<button type="button" class="vault-btn switch-btn" onclick="activateVaultDevice('${dev.id}')">⚡ Switch Active</button>`
+                  : `<button type="button" class="vault-btn" style="opacity:0.5;" disabled>No Cookies</button>`
+                )
+            }
+          </div>
+        </div>
+      `;
+    }).join('');
+
+  } catch (err) {
+    container.innerHTML = `<div class="vault-loading-state" style="color:var(--accent-red)">Failed to load vault profiles: ${err.message}</div>`;
+  }
+}
+
+async function activateVaultDevice(deviceId) {
+  try {
+    const res = await fetch('/api/vault/activate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ device_id: deviceId })
+    });
+    if (res.ok) {
+      showToast(`⚡ Switched active downloader session to: ${deviceId}`);
+      checkCookieStatus();
+      loadCookieVaultDevices();
+    } else {
+      const err = await res.json();
+      showToast(`Error: ${err.detail || 'Could not switch profile'}`, 'error');
+    }
+  } catch (e) {
+    showToast(`Error: ${e.message}`, 'error');
+  }
+}
+
+async function renameVaultDevice(deviceId, currentName) {
+  const newName = prompt(`Enter new friendly name for device (${deviceId}):`, currentName);
+  if (!newName || newName.trim() === currentName) return;
+  try {
+    const res = await fetch('/api/vault/rename', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ device_id: deviceId, name: newName.trim() })
+    });
+    if (res.ok) {
+      showToast(`✅ Renamed device to "${newName.trim()}"`);
+      loadCookieVaultDevices();
+    } else {
+      showToast('Could not rename device', 'error');
+    }
+  } catch (e) {
+    showToast(`Error: ${e.message}`, 'error');
+  }
+}
+
+window.activateVaultDevice = activateVaultDevice;
+window.renameVaultDevice = renameVaultDevice;
 
 function setLoading(isLoading) {
   const btnText = inspectBtn.querySelector('.btn-text');
@@ -668,6 +891,12 @@ async function checkSystemStatus() {
     const folderSpan = document.querySelector('#openDownloadsFolder span');
     if (folderSpan && data.downloads_dir) {
       folderSpan.textContent = `Downloads: ${data.downloads_dir}`;
+    }
+    if (data.device_name) {
+      const fleetTag = document.getElementById('footerFleetText');
+      if (fleetTag) {
+        fleetTag.innerHTML = `💻 Vault Active: <strong>${escapeHtml(data.device_name)}</strong>`;
+      }
     }
   } catch (e) {
     // ignore
@@ -1153,8 +1382,9 @@ function initWebSocket() {
         renderJobs();
       } else if (data.type === 'cookies_updated') {
         checkCookieStatus();
+        loadCookieVaultDevices();
         if (data.count > 0) {
-          showToast(`✅ Successfully synced ${data.count} YouTube cookies! BotGuard bypassed.`, 'success');
+          showToast(`✅ Successfully synced ${data.count} cookies to vault profile!`, 'success');
           if (pendingRetryUrl && urlInput.value.trim() === pendingRetryUrl) {
             showToast('🔄 Auto-analyzing video link with newly synced cookies...');
             inspectForm.dispatchEvent(new Event('submit'));

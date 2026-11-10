@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>VeloxMac — Next-Gen Media & IDM Downloader</title>
+  <title>Velox by Scroll Loop — Lahiru_nk</title>
   <link rel="stylesheet" href="/static/style.css">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2300f2fe'><path d='M12 2L2 12h5v8h10v-8h5L12 2z'/></svg>">
 </head>
 <body>
   <div class="mac-window">
-    <!-- macOS Native Unified Header Toolbar -->
+    <!-- Native Glassmorphism Unified Header Toolbar -->
     <header class="titlebar">
       <div class="app-identity">
         <div class="logo-mark">
@@ -18,8 +18,11 @@
           </svg>
         </div>
         <div class="app-title-group">
-          <span class="app-name">Velox</span>
-          <span class="version-tag" id="appVersionBadge">v1.0.0</span>
+          <div class="app-brand-row">
+            <span class="app-name">Velox</span>
+            <span class="version-tag" id="appVersionBadge">v1.0.0</span>
+          </div>
+          <span class="app-brand-sub">by <strong>Scroll Loop</strong> • <span class="author-tag">Lahiru_nk</span></span>
         </div>
       </div>
       
@@ -133,20 +136,46 @@
         </div>
       </section>
     </main>
+
+    <!-- Global App Window Footer -->
+    <footer class="app-window-footer">
+      <div class="footer-brand-meta">
+        <span class="footer-bolt">⚡</span>
+        <span class="footer-app">Velox</span>
+        <span class="footer-sep">•</span>
+        <span class="footer-text">A Product of <strong>Scroll Loop</strong></span>
+        <span class="footer-sep">•</span>
+        <span class="footer-text">Crafted by <span class="footer-author">Lahiru_nk</span></span>
+      </div>
+      <div class="footer-fleet-status" id="footerFleetStatus" title="Click to view Multi-Device Cookie Vault" style="cursor: pointer;">
+        <span class="fleet-icon">💻</span>
+        <span id="footerFleetText">Fleet Vault: Detecting machine...</span>
+      </div>
+    </footer>
   </div>
 
-  <!-- Cookie Manager Modal (Desktop Preferences Dialog) -->
+  <!-- Cookie Manager & Multi-Device Vault Modal -->
   <div class="modal-backdrop" id="cookieModal" style="display: none;">
-    <div class="modal-card desktop-prefs-card">
+    <div class="modal-card desktop-prefs-card cookie-vault-modal-card">
       <div class="modal-header">
         <div class="modal-title-group">
-          <span class="modal-icon">🍪</span>
+          <span class="modal-icon">🔐</span>
           <div>
-            <h3 class="modal-title">YouTube Session & Cookie Settings</h3>
-            <span class="modal-subtitle">Bypass YouTube BotGuard challenge by linking your browser session</span>
+            <h3 class="modal-title">Multi-Device Cookie Vault & Session Manager</h3>
+            <span class="modal-subtitle">Velox Fleet Edition by Scroll Loop • Save & switch cookies across all your PCs</span>
           </div>
         </div>
         <button class="modal-close-btn" id="closeCookieModal">&times;</button>
+      </div>
+
+      <!-- Vault Mode Navigation Tabs -->
+      <div class="vault-tabs-nav">
+        <button type="button" class="vault-tab-btn active" id="tabVaultDevicesBtn">
+          💻 Saved Device Profiles (<span id="vaultDeviceCount">1</span>)
+        </button>
+        <button type="button" class="vault-tab-btn" id="tabSyncCookiesBtn">
+          ⚡ Sync / Add Cookies to This PC
+        </button>
       </div>
 
       <div class="modal-body desktop-modal-body">
@@ -156,52 +185,92 @@
             <span class="dot" id="modalCookieDot"></span>
             <span class="status-summary" id="currentStatusText">Checking session...</span>
           </div>
-          <button type="button" class="clear-cookie-btn" id="clearCookieBtn" style="display: none;">
-            🗑️ Clear Saved Session
-          </button>
+          <div class="status-actions-group">
+            <button type="button" class="vault-toolbar-btn" id="openVaultFolderBtn" title="Open cookie_vault directory in Finder or Explorer">
+              📁 Open Vault Folder
+            </button>
+            <a href="/api/vault/export" download="Velox_Cookie_Vault_Backup.zip" class="vault-toolbar-btn" style="text-decoration:none;" title="Download zip of all PC cookie profiles">
+              📦 Export Vault (.zip)
+            </a>
+            <button type="button" class="clear-cookie-btn" id="clearCookieBtn" style="display: none;">
+              🗑️ Clear
+            </button>
+          </div>
         </div>
 
-        <!-- 2-Column Desktop Grid -->
-        <div class="desktop-cookie-grid">
-          <!-- Column 1: Browser Extension (Recommended) -->
-          <div class="cookie-method-card featured desktop-col">
-            <div class="method-header-flex">
-              <span class="method-badge">RECOMMENDED • FASTEST</span>
+        <!-- TAB 1: Multi-Device Vault Profiles List -->
+        <div class="vault-tab-panel" id="panelVaultDevices">
+          <div class="vault-info-banner">
+            <div class="vault-info-text">
+              <strong>Multi-PC Sharing:</strong> Each PC automatically saves its cookies to its own file in <code>cookie_vault/</code>. When switching PCs or moving files via USB/Cloud, click <strong>"Switch Active"</strong> to use any machine's cookies!
             </div>
-            <div class="method-title">🧩 Brave & Chrome Extension Bridge</div>
-            <p class="method-sub">
-              Since you are <strong>already logged into YouTube</strong> in your browser, no passwords needed! Transfer your session to VeloxMac in 1 click:
-            </p>
+            <button type="button" class="vault-refresh-btn" id="refreshVaultBtn" title="Scan folder for new device cookie files">
+              🔄 Refresh List
+            </button>
+          </div>
 
-            <div class="extension-actions-row">
-              <button type="button" class="sync-large-btn" id="openExtFolderBtn">
-                📂 Open Extension in Finder
-              </button>
-              <a href="/api/extension/download" download="VeloxMac-Extension.zip" class="upload-cookie-btn" style="text-decoration:none;">
-                📥 Download .ZIP
-              </a>
+          <!-- Dynamically populated device profile cards -->
+          <div class="vault-devices-container" id="vaultDevicesContainer">
+            <div class="vault-loading-state">Loading saved devices from vault...</div>
+          </div>
+        </div>
+
+        <!-- TAB 2: Sync / Add Cookies to Current PC -->
+        <div class="vault-tab-panel" id="panelSyncCookies" style="display: none;">
+          <!-- Custom Device Name input -->
+          <div class="device-naming-box">
+            <div class="naming-label">
+              <span>🏷️ Name for This Computer:</span>
+              <span class="naming-hint">(Shown in vault profiles on your other PCs)</span>
             </div>
-
-            <div class="extension-steps">
-              <div class="step-item"><span class="step-num">1</span> Go to <code>chrome://extensions</code> or <code>brave://extensions</code></div>
-              <div class="step-item"><span class="step-num">2</span> Turn on <strong>Developer mode</strong> (top right switch)</div>
-              <div class="step-item"><span class="step-num">3</span> Drag & drop the <strong>extension</strong> folder into the browser</div>
-              <div class="step-item"><span class="step-num">4</span> On YouTube, click the Velox extension &rarr; <strong>"⚡ 1-Click Sync"</strong></div>
+            <div class="naming-input-row">
+              <input type="text" id="customDeviceNameInput" placeholder="e.g. Lahiru's Mac Mini M6" class="naming-field">
+              <button type="button" class="rename-save-btn" id="saveDeviceNameBtn">Save Device Name</button>
             </div>
           </div>
 
-          <!-- Column 2: File Import & Manual Paste -->
-          <div class="desktop-col right-col">
-            <!-- Manual File / Paste Card -->
-            <div class="cookie-method-card">
-              <div class="method-title">📁 Option B: Import / Paste cookies.txt</div>
-              <div class="manual-cookie-tabs">
-                <input type="file" id="cookieFileInput" accept=".txt" style="display: none;">
-                <button type="button" class="upload-cookie-btn" id="selectCookieFileBtn" style="margin-bottom: 8px; width: 100%;">
-                  📂 Choose cookies.txt File
+          <!-- 2-Column Desktop Grid -->
+          <div class="desktop-cookie-grid">
+            <!-- Column 1: Browser Extension (Recommended) -->
+            <div class="cookie-method-card featured desktop-col">
+              <div class="method-header-flex">
+                <span class="method-badge">RECOMMENDED • FASTEST</span>
+              </div>
+              <div class="method-title">🧩 Brave & Chrome Extension Bridge</div>
+              <p class="method-sub">
+                Logged in on your browser? Sync all YouTube, Instagram, Facebook, TikTok & X cookies to this PC's vault profile with 1 click:
+              </p>
+
+              <div class="extension-actions-row">
+                <button type="button" class="sync-large-btn" id="openExtFolderBtn">
+                  📂 Open Extension in Finder
                 </button>
-                <textarea id="cookieTextInput" rows="4" placeholder="Or paste Netscape cookie string here..."></textarea>
-                <button type="button" class="save-cookie-btn" id="saveCookieTextBtn" style="margin-top: 6px; width: 100%;">Save Text Cookies</button>
+                <a href="/api/extension/download" download="Velox-Extension.zip" class="upload-cookie-btn" style="text-decoration:none;">
+                  📥 Download .ZIP
+                </a>
+              </div>
+
+              <div class="extension-steps">
+                <div class="step-item"><span class="step-num">1</span> Go to <code>chrome://extensions</code> or <code>brave://extensions</code></div>
+                <div class="step-item"><span class="step-num">2</span> Turn on <strong>Developer mode</strong> (top right switch)</div>
+                <div class="step-item"><span class="step-num">3</span> Drag & drop the <strong>extension</strong> folder into the browser</div>
+                <div class="step-item"><span class="step-num">4</span> On YouTube, click the Velox extension &rarr; <strong>"⚡ 1-Click Sync"</strong></div>
+              </div>
+            </div>
+
+            <!-- Column 2: File Import & Manual Paste -->
+            <div class="desktop-col right-col">
+              <!-- Manual File / Paste Card -->
+              <div class="cookie-method-card">
+                <div class="method-title">📁 Option B: Import / Paste cookies.txt</div>
+                <div class="manual-cookie-tabs">
+                  <input type="file" id="cookieFileInput" accept=".txt" style="display: none;">
+                  <button type="button" class="upload-cookie-btn" id="selectCookieFileBtn" style="margin-bottom: 8px; width: 100%;">
+                    📂 Choose cookies.txt File
+                  </button>
+                  <textarea id="cookieTextInput" rows="4" placeholder="Or paste Netscape cookie string here..."></textarea>
+                  <button type="button" class="save-cookie-btn" id="saveCookieTextBtn" style="margin-top: 6px; width: 100%;">Save to This PC Vault</button>
+                </div>
               </div>
             </div>
           </div>

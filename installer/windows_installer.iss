@@ -3,7 +3,7 @@
 
 #define MyAppName "Velox"
 #define MyAppVersion "1.0.0"
-#define MyAppPublisher "Velox Downloader Team"
+#define MyAppPublisher "Scroll Loop (Lahiru_nk)"
 #define MyAppURL "https://github.com/scrollloopcom-code/VeloxMac"
 #define MyAppExeName "Velox.exe"
 

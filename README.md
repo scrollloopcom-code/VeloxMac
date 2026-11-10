@@ -1,6 +1,7 @@
-# VeloxMac — Next-Gen Media & IDM Downloader for macOS
+# Velox — Next-Gen Media & IDM Downloader
+**A Product of Scroll Loop • Developed by Lahiru_nk**
 
-Native macOS high-performance media extractor and multi-threaded segmented downloader built using the exact core engineering methods identified in Ultra Velox IDM, tailored specifically for Apple Silicon and Intel Macs.
+High-performance cross-platform (macOS & Windows) media extractor and multi-threaded segmented downloader with Multi-Device Cookie Vault and automatic in-app GitHub updates.
 
 ---
 

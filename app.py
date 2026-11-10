@@ -14,7 +14,8 @@ from engine.media_extractor import MediaExtractor
 from engine.muxer import FFMPEG_PATH, is_ffmpeg_available
 from engine.segmented_downloader import SegmentedDownloader
 from engine.updater import AutoUpdater
-from version import APP_NAME, APP_VERSION, GITHUB_OWNER, GITHUB_REPO
+from engine.cookie_vault import CookieVaultManager
+from version import APP_NAME, APP_FULL_NAME, APP_VERSION, COMPANY_NAME, AUTHOR, GITHUB_OWNER, GITHUB_REPO
 
 # Base directories
 BASE_DIR = Path(__file__).resolve().parent
@@ -28,7 +29,7 @@ os.makedirs(STATIC_DIR, exist_ok=True)
 import json
 active_capture_proc: Optional[asyncio.subprocess.Process] = None
 
-app = FastAPI(title="VeloxMac Media & IDM Downloader", version="1.0.0")
+app = FastAPI(title=f"{APP_FULL_NAME} by {AUTHOR} ({COMPANY_NAME})", version=APP_VERSION)
 
 app.add_middleware(
     CORSMiddleware,
@@ -41,6 +42,7 @@ app.add_middleware(
 job_manager = JobManager(download_dir=DOWNLOADS_DIR, state_file=STATE_FILE)
 media_extractor = MediaExtractor(download_dir=DOWNLOADS_DIR)
 auto_updater = AutoUpdater(download_dir=DOWNLOADS_DIR)
+cookie_vault = CookieVaultManager(base_download_dir=DOWNLOADS_DIR)
 
 # Request Models
 class InspectRequest(BaseModel):
@@ -63,9 +65,17 @@ class DirectDownloadRequest(BaseModel):
 
 class CookieRequest(BaseModel):
     cookie_text: str
+    device_name: Optional[str] = None
 
 class UpdateApplyRequest(BaseModel):
     download_url: str
+
+class VaultActivateRequest(BaseModel):
+    device_id: str
+
+class VaultRenameRequest(BaseModel):
+    device_id: str
+    name: str
 
 @app.get("/api/cookies/status")
 def get_cookie_status():
@@ -100,15 +110,72 @@ def save_cookies(req: CookieRequest):
     with open(cookie_path, "w", encoding="utf-8") as f:
         f.write(content)
     
+    # Save into Multi-Device Cookie Vault under the current PC's profile
+    vault_res = cookie_vault.save_device_cookies(content, custom_device_name=req.device_name)
+    valid_count = vault_res.get("cookie_count", 0)
+
     # Count valid cookie lines and broadcast real-time update to all open Web UI tabs!
-    valid_count = len([line for line in content.splitlines() if not line.startswith("#") and "\t" in line])
     job_manager.broadcast_update({
         "type": "cookies_updated",
         "count": valid_count,
-        "path": cookie_path
+        "path": cookie_path,
+        "device_id": vault_res.get("device_id"),
+        "platforms": vault_res.get("platforms", [])
     })
     
-    return {"status": "ok", "message": f"Saved {valid_count} cookies successfully!", "count": valid_count}
+    return {
+        "status": "ok", 
+        "message": f"Saved {valid_count} cookies to {vault_res.get('device_name')} vault!", 
+        "count": valid_count,
+        "vault": vault_res
+    }
+
+@app.get("/api/vault/devices")
+def get_vault_devices():
+    """Returns all registered device profiles in the multi-device cookie vault."""
+    return cookie_vault.get_vault_data()
+
+@app.post("/api/vault/activate")
+def activate_vault_device(req: VaultActivateRequest):
+    """Activates a specific device profile's cookies for active downloading."""
+    success = cookie_vault.set_active_profile(req.device_id)
+    if not success:
+        raise HTTPException(status_code=400, detail="Device profile not found or has no cookies")
+    job_manager.broadcast_update({
+        "type": "cookies_updated",
+        "device_id": req.device_id
+    })
+    return {"status": "ok", "message": f"Activated cookies from profile: {req.device_id}"}
+
+@app.post("/api/vault/rename")
+def rename_vault_device(req: VaultRenameRequest):
+    """Renames a device in the cookie vault."""
+    success = cookie_vault.rename_device(req.device_id, req.name)
+    if not success:
+        raise HTTPException(status_code=400, detail="Could not rename device")
+    return {"status": "ok", "message": "Device profile renamed"}
+
+@app.get("/api/vault/export")
+def export_cookie_vault():
+    """Exports all device cookie profiles as a portable zip for transferring to another PC."""
+    zip_path = cookie_vault.export_vault_zip()
+    return FileResponse(zip_path, filename="Velox_Cookie_Vault_Backup.zip", media_type="application/zip")
+
+@app.post("/api/vault/reveal")
+def reveal_cookie_vault():
+    """Opens the cookie vault folder in OS file manager."""
+    import subprocess
+    v_dir = cookie_vault.vault_dir
+    try:
+        if sys.platform == "darwin":
+            subprocess.run(["open", v_dir], check=False)
+        elif sys.platform == "win32":
+            subprocess.run(["explorer.exe", os.path.abspath(v_dir)], check=False)
+        else:
+            subprocess.run(["xdg-open", v_dir], check=False)
+        return {"status": "ok", "message": "Opened cookie vault folder"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.delete("/api/cookies")
 def clear_cookies():
@@ -171,10 +238,10 @@ async def launch_cookie_capture():
 @app.get("/api/extension/download")
 def download_extension_zip():
     import shutil
-    downloads_pkg = os.path.join(BASE_DIR, "downloads", "VeloxMac-Extension")
+    downloads_pkg = os.path.join(BASE_DIR, "downloads", "Velox-Extension")
     shutil.make_archive(downloads_pkg, 'zip', root_dir=BASE_DIR, base_dir="extension")
     zip_path = f"{downloads_pkg}.zip"
-    return FileResponse(zip_path, filename="VeloxMac-Extension.zip", media_type="application/zip")
+    return FileResponse(zip_path, filename="Velox-Extension.zip", media_type="application/zip")
 
 @app.get("/api/app/download-dmg")
 def download_app_dmg():
@@ -218,7 +285,12 @@ def get_system_info():
     os_name = "Windows" if sys.platform == "win32" else ("macOS" if sys.platform == "darwin" else "Linux")
     return {
         "app_name": APP_NAME,
+        "app_full_name": APP_FULL_NAME,
         "version": APP_VERSION,
+        "company": COMPANY_NAME,
+        "author": AUTHOR,
+        "device_id": cookie_vault.current_device_id,
+        "device_name": cookie_vault.current_device_name,
         "os": os_name,
         "platform": sys.platform,
         "downloads_dir": DOWNLOADS_DIR,

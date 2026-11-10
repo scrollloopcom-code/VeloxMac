@@ -86,9 +86,11 @@ def build():
     <key>CFBundleIconFile</key>
     <string>AppIcon</string>
     <key>CFBundleIdentifier</key>
-    <string>com.velox.mac</string>
+    <string>com.scrollloop.velox</string>
     <key>CFBundleName</key>
-    <string>VeloxMac</string>
+    <string>Velox</string>
+    <key>CFBundleDisplayName</key>
+    <string>Velox by Scroll Loop</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
