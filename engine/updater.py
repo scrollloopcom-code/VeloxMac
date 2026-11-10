@@ -117,16 +117,24 @@ class AutoUpdater:
                 chosen_asset = None
 
                 if sys.platform == "win32":
-                    # Preference: InnoSetup .exe installer, then .zip, then any .exe
+                    # 1. First priority: Lightweight in-app patch zip (~18MB, no 150MB FFmpeg)
                     for a in assets:
                         name = a.get("name", "").lower()
-                        if "setup" in name and name.endswith(".exe"):
+                        if "update" in name and name.endswith(".zip"):
                             chosen_asset = a
                             break
+                    # 2. Second priority: Full portable zip
                     if not chosen_asset:
                         for a in assets:
                             name = a.get("name", "").lower()
-                            if "windows" in name and (name.endswith(".zip") or name.endswith(".exe")):
+                            if "windows" in name and name.endswith(".zip"):
+                                chosen_asset = a
+                                break
+                    # 3. Third priority: InnoSetup exe installer
+                    if not chosen_asset:
+                        for a in assets:
+                            name = a.get("name", "").lower()
+                            if "setup" in name and name.endswith(".exe"):
                                 chosen_asset = a
                                 break
                     if not chosen_asset:

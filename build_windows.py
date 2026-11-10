@@ -118,8 +118,17 @@ def build():
     print("📦 Running PyInstaller...")
     subprocess.run(pyinstaller_args, check=True)
 
-    # Post-check: copy ffmpeg.exe into dist/Velox/ if not already inside
     velox_dist_dir = os.path.join(DIST_DIR, APP_NAME)
+
+    # 1. Create Lightweight In-App Update Patch (WITHOUT the 150MB+ FFmpeg)
+    # Saves >90% bandwidth for existing installations!
+    patch_zip_name = f"{APP_NAME}-Windows-Update"
+    patch_zip_path = os.path.join(DIST_DIR, f"{patch_zip_name}.zip")
+    print(f"🗜️ Creating lightweight in-app update patch: {patch_zip_path}...")
+    shutil.make_archive(os.path.join(DIST_DIR, patch_zip_name), 'zip', root_dir=velox_dist_dir)
+    print(f"✅ Created lightweight update package: {patch_zip_path}")
+
+    # 2. Add static FFmpeg binaries for full standalone installer & portable zip
     if os.path.exists(BIN_DIR):
         dist_bin = os.path.join(velox_dist_dir, "bin")
         os.makedirs(dist_bin, exist_ok=True)
@@ -129,12 +138,12 @@ def build():
             if not os.path.exists(d):
                 shutil.copy2(s, d)
 
-    # Create portable ZIP archive
+    # 3. Create full portable ZIP archive (with FFmpeg included)
     zip_output_name = f"{APP_NAME}-Windows-v{APP_VERSION}"
     zip_path = os.path.join(DIST_DIR, f"{zip_output_name}.zip")
-    print(f"🗜️ Creating portable archive: {zip_path}...")
+    print(f"🗜️ Creating full portable archive: {zip_path}...")
     shutil.make_archive(os.path.join(DIST_DIR, zip_output_name), 'zip', root_dir=DIST_DIR, base_dir=APP_NAME)
-    print(f"✅ Created portable package: {zip_path}")
+    print(f"✅ Created full portable package: {zip_path}")
 
     # Build InnoSetup installer if ISCC is installed
     iscc = shutil.which("ISCC.exe") or shutil.which("iscc") or r"C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
