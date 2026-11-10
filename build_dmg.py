@@ -141,6 +141,8 @@ exec "$PYTHON_BIN" desktop.py
         dmg_output
     ], check=True)
 
+    # Copy DMG to dist/ directory as well
+    shutil.copy2(dmg_output, os.path.join(dist_dir, "VeloxMac-v1.0.dmg"))
     print(f"✅ Success! DMG created at: {dmg_output}")
 
     # Also build VeloxMac.zip for seamless 1-click in-app auto-updating

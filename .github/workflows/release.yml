@@ -45,7 +45,7 @@ jobs:
         with:
           name: macos-assets
           path: |
-            ~/Downloads/VeloxDownloads/VeloxMac-v1.0.dmg
+            dist/VeloxMac-v1.0.dmg
             dist/VeloxMac.zip
 
   build-windows:
@@ -87,17 +87,12 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Download macOS Artifacts
+      - name: Download All Release Artifacts
         uses: actions/download-artifact@v4
         with:
-          name: macos-assets
+          pattern: '*-assets'
           path: release_assets/
-
-      - name: Download Windows Artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: windows-assets
-          path: release_assets/
+          merge-multiple: true
 
       - name: List Release Assets
         run: |
