@@ -1,3 +1,3 @@
-"""VeloxMac Engine Package
-Next-generation Media & Multi-threaded Segmented Downloader for macOS.
+"""LoopCatch Engine Package
+Next-generation Media & Multi-threaded Segmented Downloader by Scroll Loop.
 """

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Automated DMG and .app Builder for VeloxMac.
-Generates high-res Apple icns icons, sets up VeloxMac.app bundle,
+Automated DMG and .app Builder for LoopCatch.
+Generates high-res Apple icns icons, sets up LoopCatch.app bundle,
 and packages a drag-to-Applications .dmg installer.
 """
 
@@ -19,7 +19,7 @@ def build():
     os.makedirs(dist_dir, exist_ok=True)
 
     print("🎨 Generating macOS AppIcon.icns...")
-    iconset_dir = os.path.join(build_dir, "VeloxMac.iconset")
+    iconset_dir = os.path.join(build_dir, "LoopCatch.iconset")
     os.makedirs(iconset_dir, exist_ok=True)
 
     icon_sizes = [
@@ -65,8 +65,8 @@ def build():
     icns_path = os.path.join(build_dir, "AppIcon.icns")
     subprocess.run(["iconutil", "-c", "icns", iconset_dir, "-o", icns_path], check=True)
 
-    print("📦 Assembling VeloxMac.app...")
-    app_dir = os.path.join(dist_dir, "VeloxMac.app")
+    print("📦 Assembling LoopCatch.app...")
+    app_dir = os.path.join(dist_dir, "LoopCatch.app")
     if os.path.exists(app_dir):
         shutil.rmtree(app_dir)
 
@@ -82,15 +82,15 @@ def build():
 <plist version="1.0">
 <dict>
     <key>CFBundleExecutable</key>
-    <string>VeloxMac</string>
+    <string>LoopCatch</string>
     <key>CFBundleIconFile</key>
     <string>AppIcon</string>
     <key>CFBundleIdentifier</key>
-    <string>com.scrollloop.velox</string>
+    <string>com.scrollloop.loopcatch</string>
     <key>CFBundleName</key>
-    <string>Velox</string>
+    <string>LoopCatch</string>
     <key>CFBundleDisplayName</key>
-    <string>Velox by Scroll Loop</string>
+    <string>LoopCatch by Scroll Loop</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
@@ -114,27 +114,29 @@ export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PAT
 
 exec "$PYTHON_BIN" desktop.py
 """
-    launcher_path = os.path.join(macos_dir, "VeloxMac")
+    launcher_path = os.path.join(macos_dir, "LoopCatch")
     with open(launcher_path, "w") as f:
         f.write(launcher)
     os.chmod(launcher_path, 0o755)
 
-    print("💿 Building VeloxMac-v1.0.dmg...")
+    print("💿 Building LoopCatch-v1.0.dmg...")
     dmg_stage = os.path.join(dist_dir, "dmg_stage")
     if os.path.exists(dmg_stage):
         shutil.rmtree(dmg_stage)
     os.makedirs(dmg_stage)
 
-    shutil.copytree(app_dir, os.path.join(dmg_stage, "VeloxMac.app"))
+    shutil.copytree(app_dir, os.path.join(dmg_stage, "LoopCatch.app"))
     os.symlink("/Applications", os.path.join(dmg_stage, "Applications"))
 
-    dmg_output = os.path.expanduser("~/Downloads/VeloxDownloads/VeloxMac-v1.0.dmg")
+    downloads_dir = os.path.expanduser("~/Downloads/LoopCatchDownloads")
+    os.makedirs(downloads_dir, exist_ok=True)
+    dmg_output = os.path.join(downloads_dir, "LoopCatch-v1.0.dmg")
     if os.path.exists(dmg_output):
         os.remove(dmg_output)
 
     subprocess.run([
         "hdiutil", "create",
-        "-volname", "VeloxMac",
+        "-volname", "LoopCatch",
         "-srcfolder", dmg_stage,
         "-ov",
         "-format", "UDZO",
@@ -142,13 +144,14 @@ exec "$PYTHON_BIN" desktop.py
     ], check=True)
 
     # Copy DMG to dist/ directory as well
-    shutil.copy2(dmg_output, os.path.join(dist_dir, "VeloxMac-v1.0.dmg"))
+    shutil.copy2(dmg_output, os.path.join(dist_dir, "LoopCatch-v1.0.dmg"))
     print(f"✅ Success! DMG created at: {dmg_output}")
 
-    # Also build VeloxMac.zip for seamless 1-click in-app auto-updating
-    zip_output = os.path.join(dist_dir, "VeloxMac.zip")
+    # Also build LoopCatch-Mac.zip and LoopCatch.zip for seamless 1-click in-app auto-updating
+    zip_output = os.path.join(dist_dir, "LoopCatch-Mac.zip")
     print(f"🗜️ Creating {zip_output} for in-app auto-updater...")
-    shutil.make_archive(os.path.join(dist_dir, "VeloxMac"), "zip", root_dir=dist_dir, base_dir="VeloxMac.app")
+    shutil.make_archive(os.path.join(dist_dir, "LoopCatch-Mac"), "zip", root_dir=dist_dir, base_dir="LoopCatch.app")
+    shutil.copy2(zip_output, os.path.join(dist_dir, "LoopCatch.zip"))
     print(f"✅ Created in-app updater package: {zip_output}")
 
 if __name__ == "__main__":

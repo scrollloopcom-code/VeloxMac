@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-VeloxMac Desktop Application Launcher.
-Starts the local VeloxMac engine server (if not already running)
-and opens a native macOS dark glassmorphism window via Apple WebKit.
+LoopCatch Desktop Application Launcher.
+Starts the local LoopCatch engine server (if not already running)
+and opens a native dark glassmorphism desktop window.
 """
 
 import sys

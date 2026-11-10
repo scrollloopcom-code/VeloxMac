@@ -3,24 +3,33 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Velox by Scroll Loop — Lahiru_nk</title>
+  <title>LoopCatch by Scroll Loop — Lahiru_nk</title>
   <link rel="stylesheet" href="/static/style.css">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2300f2fe'><path d='M12 2L2 12h5v8h10v-8h5L12 2z'/></svg>">
 </head>
 <body>
   <div class="mac-window">
+    <!-- Ambient Luminous Mesh -->
+    <div class="ambient-mesh">
+      <div class="mesh-orb orb-1"></div>
+      <div class="mesh-orb orb-2"></div>
+      <div class="mesh-orb orb-3"></div>
+    </div>
+
     <!-- Native Glassmorphism Unified Header Toolbar -->
     <header class="titlebar">
       <div class="app-identity">
-        <div class="logo-mark">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke-linecap="round" stroke-linejoin="round"/>
+        <div class="logo-mark loopcatch-mark" title="LoopCatch by Scroll Loop">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3">
+            <path d="M18.178 8c5.096 0 5.096 8 0 8-2.67 0-4.67-2.67-6.178-5.33C10.5 8 8.5 8 5.822 8c-5.096 0-5.096 8 0 8 2.67 0 4.67-2.67 6.178-5.33" stroke-linecap="round"/>
+            <path d="M12 3v5l3-3" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
         </div>
         <div class="app-title-group">
           <div class="app-brand-row">
-            <span class="app-name">Velox</span>
+            <span class="app-name">LoopCatch</span>
             <span class="version-tag" id="appVersionBadge">v1.0.0</span>
+            <span class="pro-tag">PRO</span>
           </div>
           <span class="app-brand-sub">by <strong>Scroll Loop</strong> • <span class="author-tag">Lahiru_nk</span></span>
         </div>
@@ -30,14 +39,14 @@
         <button class="status-pill update-nav-pill" id="updateNavBtn" style="display: none; cursor: pointer;" title="New version available! Click to update.">
           <span class="dot update-dot"></span> <span id="updateNavText">⚡ Update Available</span>
         </button>
-        <button class="status-pill cookie-pill" id="cookieStatusBtn" style="cursor:pointer;" title="Configure Cookies">
-          <span class="dot" id="cookieDot" style="background:#f39c12"></span> <span id="cookieLabel">Cookies: None</span>
+        <button class="status-pill cookie-pill" id="cookieStatusBtn" style="cursor:pointer;" title="Configure Cookie Vault">
+          <span class="dot" id="cookieDot" style="background:#f39c12"></span> <span id="cookieLabel">Cookie Vault</span>
         </button>
         <span class="status-pill ffmpeg-pill" id="ffmpegStatus">
-          <span class="dot active"></span> FFmpeg Muxer
+          <span class="dot active"></span> Native FFmpeg
         </span>
         <span class="status-pill conn-pill" id="wsStatus">
-          <span class="dot active"></span> Connected
+          <span class="dot active"></span> 60fps Live
         </span>
       </div>
     </header>
@@ -46,13 +55,26 @@
     <main class="content-area">
       <!-- Hero URL Inspector Section -->
       <section class="hero-section">
-        <div class="hero-badge">ACCELERATED MEDIA & MULTI-THREADED SEGMENTED DOWNLOADER</div>
-        <h1 class="hero-heading">Paste Any Media or Direct Download Link</h1>
-        <p class="hero-subtext">Direct IDM Multi-connection HTTP Range engine + 4K YouTube, TikTok, Instagram, Facebook, and Twitter/X extractor with native macOS FFmpeg post-processing.</p>
+        <div class="hero-badge">
+          <span class="badge-pulse"></span>
+          <span>MULTI-THREADED TURBO ENGINE • 4K & SOCIAL EXTRACTOR</span>
+        </div>
+        <h1 class="hero-heading">Grab Any Media Stream or Direct Download</h1>
+        <p class="hero-subtext">Direct 16x IDM Multi-connection HTTP engine with 4K YouTube, TikTok, Instagram Reels, Facebook, and Twitter/X extractor + Native FFmpeg Trimmer Studio.</p>
+
+        <!-- Platform Detection Live Indicator Chips -->
+        <div class="platform-detect-bar" id="platformDetectBar">
+          <div class="p-chip" data-platform="youtube"><span class="p-dot youtube-dot"></span> YouTube 4K</div>
+          <div class="p-chip" data-platform="tiktok"><span class="p-dot tiktok-dot"></span> TikTok No-Watermark</div>
+          <div class="p-chip" data-platform="instagram"><span class="p-dot insta-dot"></span> Instagram Reels</div>
+          <div class="p-chip" data-platform="facebook"><span class="p-dot fb-dot"></span> Facebook HD</div>
+          <div class="p-chip" data-platform="twitter"><span class="p-dot x-dot"></span> X / Twitter</div>
+          <div class="p-chip" data-platform="direct"><span class="p-dot direct-dot"></span> Direct IDM (8-16x)</div>
+        </div>
 
         <form class="url-input-container" id="inspectForm">
-          <div class="input-glow-wrapper">
-            <div class="input-icon">
+          <div class="input-glow-wrapper" id="inputGlowWrapper">
+            <div class="input-icon" id="inputPlatformIcon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" stroke-linecap="round"/>
                 <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" stroke-linecap="round"/>
@@ -61,7 +83,7 @@
             <input 
               type="text" 
               id="urlInput" 
-              placeholder="Paste media link or file URL (e.g. YouTube, TikTok, DMG, ZIP)..." 
+              placeholder="Paste media link or file URL (YouTube, TikTok, Reels, DMG, ZIP)..." 
               autocomplete="off" 
               spellcheck="false"
               required
@@ -79,16 +101,6 @@
             </button>
           </div>
         </form>
-
-        <!-- Supported Platforms Bar -->
-        <div class="supported-tags">
-          <span class="tag">YouTube 4K</span>
-          <span class="tag">TikTok No-Watermark</span>
-          <span class="tag">Instagram Reels</span>
-          <span class="tag">Twitter / X</span>
-          <span class="tag">Facebook Video</span>
-          <span class="tag">Direct DMG / ZIP / ISO (IDM 8-16x)</span>
-        </div>
       </section>
 
       <!-- Inspection Results Drawer -->
@@ -112,7 +124,7 @@
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
               </svg>
-              <span>Downloads: ~/Downloads/VeloxDownloads</span>
+              <span>Downloads: ~/Downloads/LoopCatchDownloads</span>
             </button>
           </div>
         </div>
@@ -141,7 +153,7 @@
     <footer class="app-window-footer">
       <div class="footer-brand-meta">
         <span class="footer-bolt">⚡</span>
-        <span class="footer-app">Velox</span>
+        <span class="footer-app">LoopCatch</span>
         <span class="footer-sep">•</span>
         <span class="footer-text">A Product of <strong>Scroll Loop</strong></span>
         <span class="footer-sep">•</span>
@@ -162,7 +174,7 @@
           <span class="modal-icon">🔐</span>
           <div>
             <h3 class="modal-title">Multi-Device Cookie Vault & Session Manager</h3>
-            <span class="modal-subtitle">Velox Fleet Edition by Scroll Loop • Save & switch cookies across all your PCs</span>
+            <span class="modal-subtitle">LoopCatch Fleet Edition by Scroll Loop • Save & switch cookies across all your PCs</span>
           </div>
         </div>
         <button class="modal-close-btn" id="closeCookieModal">&times;</button>
@@ -189,7 +201,7 @@
             <button type="button" class="vault-toolbar-btn" id="openVaultFolderBtn" title="Open cookie_vault directory in Finder or Explorer">
               📁 Open Vault Folder
             </button>
-            <a href="/api/vault/export" download="Velox_Cookie_Vault_Backup.zip" class="vault-toolbar-btn" style="text-decoration:none;" title="Download zip of all PC cookie profiles">
+            <a href="/api/vault/export" download="LoopCatch_Cookie_Vault_Backup.zip" class="vault-toolbar-btn" style="text-decoration:none;" title="Download zip of all PC cookie profiles">
               📦 Export Vault (.zip)
             </a>
             <button type="button" class="clear-cookie-btn" id="clearCookieBtn" style="display: none;">
@@ -245,7 +257,7 @@
                 <button type="button" class="sync-large-btn" id="openExtFolderBtn">
                   📂 Open Extension in Finder
                 </button>
-                <a href="/api/extension/download" download="Velox-Extension.zip" class="upload-cookie-btn" style="text-decoration:none;">
+                <a href="/api/extension/download" download="LoopCatch-Extension.zip" class="upload-cookie-btn" style="text-decoration:none;">
                   📥 Download .ZIP
                 </a>
               </div>
@@ -254,7 +266,7 @@
                 <div class="step-item"><span class="step-num">1</span> Go to <code>chrome://extensions</code> or <code>brave://extensions</code></div>
                 <div class="step-item"><span class="step-num">2</span> Turn on <strong>Developer mode</strong> (top right switch)</div>
                 <div class="step-item"><span class="step-num">3</span> Drag & drop the <strong>extension</strong> folder into the browser</div>
-                <div class="step-item"><span class="step-num">4</span> On YouTube, click the Velox extension &rarr; <strong>"⚡ 1-Click Sync"</strong></div>
+                <div class="step-item"><span class="step-num">4</span> Click the LoopCatch extension &rarr; <strong>"⚡ 1-Click Sync"</strong></div>
               </div>
             </div>
 
@@ -286,7 +298,7 @@
         <div class="modal-title-group">
           <span class="modal-icon">✂️</span>
           <div>
-            <h3 class="modal-title" id="studioModalTitle">VeloxMac Trimmer Studio</h3>
+            <h3 class="modal-title" id="studioModalTitle">LoopCatch Trimmer Studio</h3>
             <span class="modal-subtitle">Preview with authenticated audio & video playback. Set precise Start & End cut points.</span>
           </div>
         </div>
@@ -422,7 +434,7 @@
         <div class="modal-title-group">
           <span class="modal-icon">⚡</span>
           <div>
-            <h3 class="modal-title" id="updateModalTitle">Velox Software Update</h3>
+            <h3 class="modal-title" id="updateModalTitle">LoopCatch Software Update</h3>
             <span class="modal-subtitle">A new release is available on GitHub with performance improvements and new features.</span>
           </div>
         </div>

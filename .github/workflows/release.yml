@@ -1,4 +1,4 @@
-name: Build & Publish Velox Releases (macOS & Windows)
+name: Build & Publish LoopCatch Releases (macOS & Windows)
 
 on:
   push:
@@ -37,7 +37,7 @@ jobs:
 
       - name: Build macOS DMG and Update Archive
         run: |
-          mkdir -p ~/Downloads/VeloxDownloads
+          mkdir -p ~/Downloads/LoopCatchDownloads
           python build_dmg.py
 
       - name: Upload macOS Artifacts
@@ -45,8 +45,9 @@ jobs:
         with:
           name: macos-assets
           path: |
-            dist/VeloxMac-v1.0.dmg
-            dist/VeloxMac.zip
+            dist/LoopCatch-v1.0.dmg
+            dist/LoopCatch-Mac.zip
+            dist/LoopCatch.zip
 
   build-windows:
     runs-on: windows-latest
@@ -113,20 +114,24 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.tag_info.outputs.tag }}
-          name: Velox ${{ steps.tag_info.outputs.tag }}
+          name: LoopCatch ${{ steps.tag_info.outputs.tag }}
           body: |
-            ## ⚡ Velox Next-Gen Media & IDM Downloader — ${{ steps.tag_info.outputs.tag }}
+            ## ⚡ LoopCatch by Scroll Loop — ${{ steps.tag_info.outputs.tag }}
+            **Developed by Lahiru_nk**
 
             ### 🚀 What's New:
-            - **Cross-Platform Support**: Native binaries for both **macOS (DMG & in-place update zip)** and **Windows (Standalone Portable ZIP & Setup Installer)**.
+            - **Cross-Platform Support**: Native binaries for both **macOS (DMG & 98KB in-place update zip)** and **Windows (Standalone Portable ZIP, Lightweight Fast Update Patch & Setup Installer)**.
+            - **Smart Lightweight In-App Patch**: Windows updates use ~18 MB instead of 200MB+ by keeping your existing local FFmpeg untouched!
+            - **Multi-Device Cookie Vault**: Save and 1-click switch active downloader profiles across all your computers (Mac, Windows, Laptops).
             - **Universal Social Media Extraction**: 4K YouTube, TikTok (No-Watermark), Instagram Reels, Facebook HD/SD, Twitter/X, and Reddit.
             - **Interactive Trimmer Studio**: Frame-accurate Start [IN] and End [OUT] markers with glowing range timeline and authenticated audio/video preview.
-            - **Universal 1-Click Cookie Sync**: Chrome/Brave extension v1.1.
+            - **LoopCatch Browser Bridge**: Chrome & Brave extension v1.3 with 1-click session sync.
 
             ---
             ### 📦 Download Links:
-            - **macOS**: `VeloxMac-v1.0.dmg` (or `VeloxMac.zip` for in-app auto-update)
-            - **Windows**: `Velox-Windows-Setup.exe` (or `Velox-Windows-v1.0.0.zip` for portable use)
+            - **macOS**: `LoopCatch-v1.0.dmg` (or `LoopCatch-Mac.zip` for in-app auto-update)
+            - **Windows (Full Setup)**: `LoopCatch-Windows-Setup.exe` (or `LoopCatch-Windows-v1.0.0.zip` for portable use)
+            - **Windows (Lightweight Fast Update)**: `LoopCatch-Windows-Update.zip` (~18 MB in-app patch)
           files: |
             release_assets/*
           draft: false

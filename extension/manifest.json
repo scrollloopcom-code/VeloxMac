@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Velox Cookie Bridge (Scroll Loop)",
-  "version": "1.2.0",
-  "description": "Universal 1-Click Cookie Sync for Velox by Scroll Loop (Lahiru_nk)",
+  "name": "LoopCatch Bridge (Scroll Loop)",
+  "version": "1.3.0",
+  "description": "Universal 1-Click Cookie Sync for LoopCatch by Scroll Loop (Lahiru_nk)",
   "permissions": [
     "cookies",
     "activeTab"

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Velox Windows Automated Build & Packaging Script.
-Bundles Velox into an optimized standalone Windows application (Velox.exe),
-bundles static ffmpeg.exe, and generates a portable .ZIP and InnoSetup installer.
+LoopCatch Windows Automated Build & Packaging Script.
+Bundles LoopCatch into an optimized standalone Windows application (LoopCatch.exe),
+bundles static ffmpeg.exe, and generates a portable .ZIP, lightweight update patch, and InnoSetup installer.
 """
 
 import os
@@ -118,19 +118,19 @@ def build():
     print("📦 Running PyInstaller...")
     subprocess.run(pyinstaller_args, check=True)
 
-    velox_dist_dir = os.path.join(DIST_DIR, APP_NAME)
+    app_dist_dir = os.path.join(DIST_DIR, APP_NAME)
 
     # 1. Create Lightweight In-App Update Patch (WITHOUT the 150MB+ FFmpeg)
     # Saves >90% bandwidth for existing installations!
     patch_zip_name = f"{APP_NAME}-Windows-Update"
     patch_zip_path = os.path.join(DIST_DIR, f"{patch_zip_name}.zip")
     print(f"🗜️ Creating lightweight in-app update patch: {patch_zip_path}...")
-    shutil.make_archive(os.path.join(DIST_DIR, patch_zip_name), 'zip', root_dir=velox_dist_dir)
+    shutil.make_archive(os.path.join(DIST_DIR, patch_zip_name), 'zip', root_dir=app_dist_dir)
     print(f"✅ Created lightweight update package: {patch_zip_path}")
 
     # 2. Add static FFmpeg binaries for full standalone installer & portable zip
     if os.path.exists(BIN_DIR):
-        dist_bin = os.path.join(velox_dist_dir, "bin")
+        dist_bin = os.path.join(app_dist_dir, "bin")
         os.makedirs(dist_bin, exist_ok=True)
         for item in os.listdir(BIN_DIR):
             s = os.path.join(BIN_DIR, item)

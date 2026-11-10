@@ -1,5 +1,5 @@
 /* ==========================================================================
-   VeloxMac Pro — Apple Dark Glassmorphism Design System
+   LoopCatch Pro — Apple Dark Glassmorphism Design System
    ========================================================================== */
 
 :root {
@@ -49,6 +49,7 @@ body {
 
 /* Native macOS Desktop Window Shell */
 .mac-window {
+  position: relative;
   width: 100%;
   height: 100%;
   max-width: none;
@@ -61,10 +62,70 @@ body {
   flex-direction: column;
 }
 
+/* Ambient Luminous Mesh */
+.ambient-mesh {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.mesh-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(90px);
+  opacity: 0.25;
+  mix-blend-mode: screen;
+  animation: orbFloat 18s ease-in-out infinite alternate;
+}
+
+.orb-1 {
+  top: -100px;
+  left: -80px;
+  width: 480px;
+  height: 480px;
+  background: radial-gradient(circle, #00f2fe 0%, rgba(0, 242, 254, 0) 70%);
+}
+
+.orb-2 {
+  bottom: -120px;
+  right: -100px;
+  width: 520px;
+  height: 520px;
+  background: radial-gradient(circle, #7928ca 0%, rgba(121, 40, 202, 0) 70%);
+  animation-duration: 22s;
+  animation-delay: -5s;
+}
+
+.orb-3 {
+  top: 40%;
+  right: 25%;
+  width: 360px;
+  height: 360px;
+  background: radial-gradient(circle, #4facfe 0%, rgba(79, 172, 254, 0) 70%);
+  opacity: 0.18;
+  animation-duration: 26s;
+  animation-delay: -10s;
+}
+
+@keyframes orbFloat {
+  0% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(40px, 30px) scale(1.08); }
+  100% { transform: translate(-30px, -20px) scale(0.95); }
+}
+
 /* macOS Unified Header Toolbar */
 .titlebar {
+  position: relative;
+  z-index: 2;
   height: 52px;
   background: rgba(18, 24, 38, 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   border-bottom: 1px solid var(--border-subtle);
   display: flex;
   align-items: center;
@@ -97,19 +158,60 @@ body {
 }
 
 .logo-mark {
-  width: 26px;
-  height: 26px;
+  width: 28px;
+  height: 28px;
   background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
-  border-radius: 7px;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
   color: #0b0f19;
+  position: relative;
+  overflow: hidden;
+}
+
+.loopcatch-mark {
+  background: linear-gradient(135deg, #00f2fe 0%, #4facfe 50%, #7928ca 100%);
+  box-shadow: 0 0 16px rgba(0, 242, 254, 0.45);
+}
+
+.loopcatch-mark::after {
+  content: "";
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(45deg, transparent 40%, rgba(255, 255, 255, 0.4) 50%, transparent 60%);
+  animation: logoSheen 6s infinite;
+}
+
+@keyframes logoSheen {
+  0% { transform: translateX(-100%) rotate(45deg); }
+  20%, 100% { transform: translateX(100%) rotate(45deg); }
 }
 
 .logo-mark svg {
-  width: 16px;
-  height: 16px;
+  width: 17px;
+  height: 17px;
+  position: relative;
+  z-index: 1;
+}
+
+.loopcatch-mark svg {
+  stroke: #070c14;
+}
+
+.pro-tag {
+  font-size: 9.5px;
+  font-weight: 900;
+  letter-spacing: 0.8px;
+  padding: 1.5px 6px;
+  border-radius: 4px;
+  background: linear-gradient(135deg, #ff007f, #7928ca);
+  color: #ffffff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 0 10px rgba(255, 0, 127, 0.4);
 }
 
 .app-title-group {
@@ -186,6 +288,8 @@ body {
 
 /* Content Area */
 .content-area {
+  position: relative;
+  z-index: 1;
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
@@ -201,34 +305,137 @@ body {
   flex-direction: column;
   align-items: center;
   text-align: center;
-  gap: 12px;
+  gap: 14px;
 }
 
 .hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 1px;
   color: var(--accent-cyan);
   background: rgba(0, 242, 254, 0.08);
-  border: 1px solid rgba(0, 242, 254, 0.2);
-  padding: 4px 12px;
+  border: 1px solid rgba(0, 242, 254, 0.25);
+  padding: 4px 14px;
   border-radius: 20px;
+  box-shadow: 0 0 20px rgba(0, 242, 254, 0.1);
+}
+
+.badge-pulse {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent-cyan);
+  box-shadow: 0 0 10px var(--accent-cyan);
+  animation: badgeBlink 2s ease-in-out infinite;
+}
+
+@keyframes badgeBlink {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.35; transform: scale(0.75); }
 }
 
 .hero-heading {
-  font-size: 28px;
-  font-weight: 700;
-  letter-spacing: -0.5px;
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: -0.6px;
   background: linear-gradient(180deg, #ffffff 0%, #b3c2d4 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
 .hero-subtext {
-  max-width: 650px;
+  max-width: 680px;
   font-size: 13.5px;
   color: var(--text-secondary);
-  line-height: 1.5;
+  line-height: 1.55;
+}
+
+/* Platform Detection Live Indicator Chips */
+.platform-detect-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.p-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 4px 12px;
+  border-radius: 20px;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  cursor: default;
+  user-select: none;
+}
+
+.p-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  transition: all 0.25s ease;
+}
+
+.youtube-dot { background: #ff0000; box-shadow: 0 0 6px rgba(255, 0, 0, 0.6); }
+.tiktok-dot { background: #00f2fe; box-shadow: 0 0 6px rgba(0, 242, 254, 0.6); }
+.insta-dot { background: #f09433; box-shadow: 0 0 6px rgba(240, 148, 51, 0.6); }
+.fb-dot { background: #1877f2; box-shadow: 0 0 6px rgba(24, 119, 242, 0.6); }
+.x-dot { background: #ffffff; box-shadow: 0 0 6px rgba(255, 255, 255, 0.6); }
+.direct-dot { background: #2ecc71; box-shadow: 0 0 6px rgba(46, 204, 113, 0.6); }
+
+.p-chip.active {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.25);
+  transform: translateY(-2px) scale(1.05);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+.p-chip.active[data-platform="youtube"] {
+  border-color: rgba(255, 0, 0, 0.6);
+  box-shadow: 0 0 16px rgba(255, 0, 0, 0.35);
+  color: #ff8888;
+}
+
+.p-chip.active[data-platform="tiktok"] {
+  border-color: rgba(0, 242, 254, 0.6);
+  box-shadow: 0 0 16px rgba(0, 242, 254, 0.35);
+  color: #7df9ff;
+}
+
+.p-chip.active[data-platform="instagram"] {
+  border-color: rgba(225, 48, 108, 0.6);
+  box-shadow: 0 0 16px rgba(225, 48, 108, 0.35);
+  color: #ff8fa3;
+}
+
+.p-chip.active[data-platform="facebook"] {
+  border-color: rgba(24, 119, 242, 0.6);
+  box-shadow: 0 0 16px rgba(24, 119, 242, 0.35);
+  color: #80bfff;
+}
+
+.p-chip.active[data-platform="twitter"] {
+  border-color: rgba(255, 255, 255, 0.6);
+  box-shadow: 0 0 16px rgba(255, 255, 255, 0.35);
+  color: #ffffff;
+}
+
+.p-chip.active[data-platform="direct"] {
+  border-color: rgba(46, 204, 113, 0.6);
+  box-shadow: 0 0 16px rgba(46, 204, 113, 0.35);
+  color: #85e8a7;
 }
 
 /* URL Input Box */
@@ -246,12 +453,43 @@ body {
   border-radius: 14px;
   padding: 6px 8px 6px 14px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
-  transition: all 0.25s ease;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .input-glow-wrapper:focus-within {
   border-color: var(--accent-cyan);
   box-shadow: 0 0 25px rgba(0, 242, 254, 0.25), 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+/* Dynamic Platform Glow States */
+.input-glow-wrapper.glow-youtube {
+  border-color: #ff0000 !important;
+  box-shadow: 0 0 30px rgba(255, 0, 0, 0.35), 0 10px 30px rgba(0, 0, 0, 0.5) !important;
+}
+
+.input-glow-wrapper.glow-tiktok {
+  border-color: #00f2fe !important;
+  box-shadow: 0 0 30px rgba(0, 242, 254, 0.4), 0 10px 30px rgba(0, 0, 0, 0.5) !important;
+}
+
+.input-glow-wrapper.glow-instagram {
+  border-color: #e1306c !important;
+  box-shadow: 0 0 30px rgba(225, 48, 108, 0.4), 0 10px 30px rgba(0, 0, 0, 0.5) !important;
+}
+
+.input-glow-wrapper.glow-facebook {
+  border-color: #1877f2 !important;
+  box-shadow: 0 0 30px rgba(24, 119, 242, 0.4), 0 10px 30px rgba(0, 0, 0, 0.5) !important;
+}
+
+.input-glow-wrapper.glow-twitter {
+  border-color: #ffffff !important;
+  box-shadow: 0 0 30px rgba(255, 255, 255, 0.35), 0 10px 30px rgba(0, 0, 0, 0.5) !important;
+}
+
+.input-glow-wrapper.glow-direct {
+  border-color: #2ecc71 !important;
+  box-shadow: 0 0 30px rgba(46, 204, 113, 0.4), 0 10px 30px rgba(0, 0, 0, 0.5) !important;
 }
 
 .input-icon {
@@ -293,7 +531,14 @@ body {
   font-size: 12px;
   font-weight: 500;
   margin-right: 8px;
-  transition: all 0.2s;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.paste-smart-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #f0f6fc;
+  font-weight: 600;
 }
 
 .paste-btn svg {
@@ -302,8 +547,15 @@ body {
 }
 
 .paste-btn:hover {
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.14);
   color: #fff;
+}
+
+.paste-smart-btn:hover {
+  background: rgba(0, 242, 254, 0.15);
+  border-color: var(--accent-cyan);
+  color: var(--accent-cyan);
+  transform: translateY(-1px);
 }
 
 .submit-btn {
@@ -318,7 +570,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .submit-btn:hover {
@@ -2293,7 +2545,7 @@ body {
 }
 
 /* ==========================================================================
-   Velox Brand Global Window Footer & Multi-Device Cookie Vault
+   LoopCatch Brand Global Window Footer & Multi-Device Cookie Vault
    ========================================================================== */
 
 .app-window-footer {

@@ -1,5 +1,5 @@
 """
-Velox Cross-Platform In-App Auto-Updater Engine.
+LoopCatch Cross-Platform In-App Auto-Updater Engine.
 Checks for releases on GitHub, downloads binary/package updates with live telemetry,
 and performs 1-click in-place application upgrade and seamless restart on macOS and Windows.
 """
@@ -100,7 +100,7 @@ class AutoUpdater:
                 tag_name = release.get("tag_name", "").strip()
                 latest_clean = tag_name.lstrip("vV")
                 changelog = release.get("body", "Bug fixes and performance improvements.")
-                release_title = release.get("name") or f"Velox v{latest_clean}"
+                release_title = release.get("name") or f"{APP_NAME} v{latest_clean}"
 
                 if not is_newer_version(latest_clean, self.current_version):
                     return {
@@ -211,8 +211,8 @@ class AutoUpdater:
             "message": "Starting download..."
         }
 
-        temp_dir = tempfile.mkdtemp(prefix="velox_update_")
-        target_name = download_url.split("/")[-1].split("?")[0] or "velox_update.pkg"
+        temp_dir = tempfile.mkdtemp(prefix="loopcatch_update_")
+        target_name = download_url.split("/")[-1].split("?")[0] or "loopcatch_update.pkg"
         target_file = os.path.join(temp_dir, target_name)
 
         headers = self._get_auth_headers()
@@ -303,13 +303,17 @@ class AutoUpdater:
             return True
 
         # If .zip was downloaded, unpack in place
-        bat_script = os.path.join(temp_dir, "velox_updater.bat")
+        bat_script = os.path.join(temp_dir, "loopcatch_updater.bat")
         with open(bat_script, "w") as f:
             f.write(f"""@echo off
 timeout /t 1 /nobreak >nul
 taskkill /F /PID {current_pid} >nul 2>&1
 tar -xf "{package_path}" -C "{app_dir}"
-start "" "{os.path.join(app_dir, 'Velox.exe')}"
+if exist "{os.path.join(app_dir, 'LoopCatch.exe')}" (
+    start "" "{os.path.join(app_dir, 'LoopCatch.exe')}"
+) else (
+    start "" "{os.path.join(app_dir, 'Velox.exe')}"
+)
 rd /s /q "{temp_dir}" >nul 2>&1
 exit
 """)
@@ -323,7 +327,7 @@ exit
     def _execute_restart_macos(self, package_path: str, temp_dir: str) -> bool:
         """macOS in-place bundle replacement and app restart."""
         current_pid = os.getpid()
-        sh_script = os.path.join(temp_dir, "velox_restart.sh")
+        sh_script = os.path.join(temp_dir, "loopcatch_restart.sh")
 
         if package_path.endswith(".zip"):
             # Unpack zip in temp
@@ -335,11 +339,14 @@ exit
                 f.write(f"""#!/bin/bash
 sleep 1
 kill -9 {current_pid} 2>/dev/null
-TARGET_APP="/Applications/VeloxMac.app"
-NEW_APP="{extract_dir}/VeloxMac.app"
+TARGET_APP="/Applications/LoopCatch.app"
+NEW_APP="{extract_dir}/LoopCatch.app"
+if [ ! -d "$NEW_APP" ] && [ -d "{extract_dir}/VeloxMac.app" ]; then
+    NEW_APP="{extract_dir}/VeloxMac.app"
+fi
 if [ -d "$NEW_APP" ]; then
     if [ -w "/Applications" ]; then
-        rm -rf "$TARGET_APP"
+        rm -rf "$TARGET_APP" "/Applications/VeloxMac.app" 2>/dev/null
         cp -R "$NEW_APP" "$TARGET_APP"
         open -n "$TARGET_APP"
     else
@@ -355,19 +362,23 @@ exit 0
             return True
 
         elif package_path.endswith(".dmg"):
-            # Mount DMG and copy VeloxMac.app to /Applications
+            # Mount DMG and copy LoopCatch.app to /Applications
             with open(sh_script, "w") as f:
                 f.write(f"""#!/bin/bash
 sleep 1
 kill -9 {current_pid} 2>/dev/null
-MOUNT_POINT="/Volumes/VeloxUpdate_{int(time.time())}"
+MOUNT_POINT="/Volumes/LoopCatchUpdate_{int(time.time())}"
 mkdir -p "$MOUNT_POINT"
 hdiutil attach "{package_path}" -mountpoint "$MOUNT_POINT" -nobrowse -quiet
-TARGET_APP="/Applications/VeloxMac.app"
-if [ -d "$MOUNT_POINT/VeloxMac.app" ]; then
+TARGET_APP="/Applications/LoopCatch.app"
+SRC_APP="$MOUNT_POINT/LoopCatch.app"
+if [ ! -d "$SRC_APP" ] && [ -d "$MOUNT_POINT/VeloxMac.app" ]; then
+    SRC_APP="$MOUNT_POINT/VeloxMac.app"
+fi
+if [ -d "$SRC_APP" ]; then
     if [ -w "/Applications" ]; then
-        rm -rf "$TARGET_APP"
-        cp -R "$MOUNT_POINT/VeloxMac.app" "$TARGET_APP"
+        rm -rf "$TARGET_APP" "/Applications/VeloxMac.app" 2>/dev/null
+        cp -R "$SRC_APP" "$TARGET_APP"
         hdiutil detach "$MOUNT_POINT" -quiet
         open -n "$TARGET_APP"
     else

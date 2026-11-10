@@ -118,7 +118,7 @@ class Job:
 
 
 class JobManager:
-    """Central Job Coordinator for VeloxMac
+    """Central Job Coordinator for LoopCatch
 
     Manages active queues, background threads, direct download workers,
     JSON state storage, and macOS Finder integration.

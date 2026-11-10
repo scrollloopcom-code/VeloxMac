@@ -1,4 +1,4 @@
-# Velox — Next-Gen Media & IDM Downloader
+# LoopCatch — Next-Gen Media & IDM Downloader
 **A Product of Scroll Loop • Developed by Lahiru_nk**
 
 High-performance cross-platform (macOS & Windows) media extractor and multi-threaded segmented downloader with Multi-Device Cookie Vault and automatic in-app GitHub updates.
@@ -42,4 +42,4 @@ python3 app:app
 ```
 
 Then open `http://127.0.0.1:8899` in Safari or Chrome.
-Downloads are automatically saved to `~/Downloads/VeloxDownloads`.
+Downloads are automatically saved to `~/Downloads/LoopCatchDownloads`.

@@ -1,5 +1,6 @@
 // ==========================================================================
-// VeloxMac Frontend Controller
+// LoopCatch Frontend Controller
+// Developed by Lahiru_nk for Scroll Loop
 // ==========================================================================
 
 const state = {
@@ -51,6 +52,65 @@ function setupEventListeners() {
     });
   }
 
+  function detectPlatformFromUrl(rawUrl) {
+    const url = (rawUrl || '').toLowerCase().trim();
+    const chips = document.querySelectorAll('.platform-detect-bar .p-chip');
+    chips.forEach(c => c.classList.remove('active'));
+
+    const wrapper = document.getElementById('inputGlowWrapper');
+    if (wrapper) {
+      wrapper.classList.remove('glow-youtube', 'glow-tiktok', 'glow-instagram', 'glow-facebook', 'glow-twitter', 'glow-direct');
+    }
+
+    if (!url) return null;
+
+    let matched = null;
+    if (url.includes('youtube.com') || url.includes('youtu.be')) {
+      matched = 'youtube';
+    } else if (url.includes('tiktok.com')) {
+      matched = 'tiktok';
+    } else if (url.includes('instagram.com')) {
+      matched = 'instagram';
+    } else if (url.includes('facebook.com') || url.includes('fb.watch') || url.includes('fb.com')) {
+      matched = 'facebook';
+    } else if (url.includes('twitter.com') || url.includes('x.com')) {
+      matched = 'twitter';
+    } else if (/\.(dmg|pkg|zip|tar|iso|exe|7z|rar|bin|deb)($|\?)/i.test(url)) {
+      matched = 'direct';
+    }
+
+    if (matched) {
+      const chip = document.querySelector(`.platform-detect-bar .p-chip[data-platform="${matched}"]`);
+      if (chip) chip.classList.add('active');
+      if (wrapper) wrapper.classList.add(`glow-${matched}`);
+    }
+    return matched;
+  }
+
+  urlInput.addEventListener('input', () => {
+    detectPlatformFromUrl(urlInput.value);
+  });
+
+  // Interactive Platform Chips click
+  document.querySelectorAll('.platform-detect-bar .p-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const p = chip.dataset.platform;
+      const examples = {
+        youtube: 'https://www.youtube.com/watch?v=',
+        tiktok: 'https://www.tiktok.com/@user/video/',
+        instagram: 'https://www.instagram.com/reel/',
+        facebook: 'https://www.facebook.com/watch/?v=',
+        twitter: 'https://x.com/status/',
+        direct: 'https://'
+      };
+      if (!urlInput.value.trim() && examples[p]) {
+        urlInput.value = examples[p];
+        urlInput.focus();
+        detectPlatformFromUrl(urlInput.value);
+      }
+    });
+  });
+
   // Paste button
   pasteBtn.addEventListener('click', async () => {
     try {
@@ -58,7 +118,8 @@ function setupEventListeners() {
       if (text) {
         urlInput.value = text.trim();
         urlInput.focus();
-        showToast('Pasted link from clipboard');
+        detectPlatformFromUrl(urlInput.value);
+        showToast('📋 Pasted link from clipboard');
       }
     } catch (e) {
       showToast('Clipboard access denied, please paste manually');
@@ -119,7 +180,7 @@ function setupEventListeners() {
 
   // Open Downloads Folder
   document.getElementById('openDownloadsFolder').addEventListener('click', () => {
-    showToast('Downloads folder: ~/Downloads/VeloxDownloads');
+    showToast('Downloads folder: ~/Downloads/LoopCatchDownloads');
   });
 
   const openExtFolderBtn = document.getElementById('openExtFolderBtn');
@@ -602,7 +663,7 @@ function openTrimmerStudio(info) {
   const endSlider = document.getElementById('studioEndSlider');
 
   const dur = (info && info.duration) ? Math.max(1, info.duration) : 100;
-  if (title) title.textContent = `Velox Trimmer Studio — ${info.title || 'Video'}`;
+  if (title) title.textContent = `LoopCatch Trimmer Studio — ${info.title || 'Video'}`;
   if (totalDuration) totalDuration.textContent = info.duration_str || formatSeconds(dur);
 
   const cardStart = document.getElementById('clipStartInput');
@@ -679,7 +740,7 @@ function renderBotGuardError(errorMsg, failedUrl) {
         <span>Authentication Required (BotGuard / Login)</span>
       </div>
       <p class="botguard-alert-desc">
-        Authentication required for this link. Use the <strong>Velox Browser Extension</strong> to sync cookies from your browser, or select a saved machine profile from your Multi-Device Cookie Vault!
+        Authentication required for this link. Use the <strong>LoopCatch Browser Extension</strong> to sync cookies from your browser, or select a saved machine profile from your Multi-Device Cookie Vault!
       </p>
       <div class="botguard-action-row">
         <button type="button" class="sync-large-btn" id="inlineSyncBtn" style="margin: 0; padding: 10px 20px;">
@@ -1720,7 +1781,7 @@ async function checkAppUpdates() {
         navText.textContent = `⚡ Update Available (${data.latest_version})`;
         navBtn.style.display = 'inline-flex';
       }
-      showToast(`⚡ New Velox Update Available: v${data.latest_version}!`, 'info');
+      showToast(`⚡ New LoopCatch Update Available: v${data.latest_version}!`, 'info');
     }
   } catch (err) {
     console.debug('Update check skipped:', err);
@@ -1813,7 +1874,7 @@ function handleUpdateProgress(progress) {
   if (progress.status === 'applying') {
     if (updateNowBtn) {
       updateNowBtn.disabled = true;
-      updateNowBtn.innerHTML = '🔄 Restarting Velox...';
+      updateNowBtn.innerHTML = '🔄 Restarting LoopCatch...';
     }
   } else if (progress.status === 'error') {
     if (updateNowBtn) {

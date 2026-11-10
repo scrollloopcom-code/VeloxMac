@@ -1,5 +1,5 @@
 """
-Velox Multi-Device Cookie Vault & Profile Manager.
+LoopCatch Multi-Device Cookie Vault & Profile Manager.
 Created by Lahiru_nk for Scroll Loop.
 Allows storing and organizing browser cookies from different machines (e.g., MacBook, Mac Mini, Windows PCs)
 with device details, platform breakdowns, and seamless 1-click active profile switching.
@@ -315,6 +315,6 @@ class CookieVaultManager:
 
     def export_vault_zip(self) -> str:
         """Packages the entire cookie vault folder into a portable zip file for other PCs."""
-        zip_output = os.path.join(self.base_download_dir, "Velox_Cookie_Vault_Backup")
+        zip_output = os.path.join(self.base_download_dir, "LoopCatch_Cookie_Vault_Backup")
         out_path = shutil.make_archive(zip_output, 'zip', root_dir=self.base_download_dir, base_dir="cookie_vault")
         return out_path
