@@ -11,6 +11,7 @@ import time
 import socket
 import threading
 import webview
+from version import APP_NAME, APP_VERSION
 
 def is_port_in_use(port: int = 8899) -> bool:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -35,17 +36,21 @@ def main():
                 break
             time.sleep(0.1)
 
-    # Open native Apple WebKit desktop window
+    # Open native desktop window (WebKit on macOS, Edge Chromium on Windows)
     win = webview.create_window(
-        title="VeloxMac — Next-Gen Media & IDM Downloader",
+        title=f"{APP_NAME} — Next-Gen Media & IDM Downloader (v{APP_VERSION})",
         url="http://127.0.0.1:8899",
-        width=1160,
+        width=1180,
         height=820,
-        min_size=(820, 560),
+        min_size=(840, 580),
         text_select=True
     )
 
-    webview.start()
+    # Use native platform GUI
+    if sys.platform == "win32":
+        webview.start(gui="edgechromium")
+    else:
+        webview.start()
 
 if __name__ == "__main__":
     main()

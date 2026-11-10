@@ -141,5 +141,11 @@ exec "$PYTHON_BIN" desktop.py
 
     print(f"✅ Success! DMG created at: {dmg_output}")
 
+    # Also build VeloxMac.zip for seamless 1-click in-app auto-updating
+    zip_output = os.path.join(dist_dir, "VeloxMac.zip")
+    print(f"🗜️ Creating {zip_output} for in-app auto-updater...")
+    shutil.make_archive(os.path.join(dist_dir, "VeloxMac"), "zip", root_dir=dist_dir, base_dir="VeloxMac.app")
+    print(f"✅ Created in-app updater package: {zip_output}")
+
 if __name__ == "__main__":
     build()

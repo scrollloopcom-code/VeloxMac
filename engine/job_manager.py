@@ -3,6 +3,7 @@ from concurrent.futures import ThreadPoolExecutor
 import json
 import os
 import subprocess
+import sys
 import threading
 import time
 import uuid
@@ -408,17 +409,35 @@ class JobManager:
             self.broadcast_update({"type": "job_deleted", "job_id": job_id})
 
     def reveal_in_finder(self, job_id: str) -> bool:
-        """Reveals the completed file in macOS Finder."""
+        """Reveals the completed file in File Explorer (Windows) or Finder (macOS)."""
         job = self.jobs.get(job_id)
         if job and job.output_path and os.path.exists(job.output_path):
-            subprocess.run(["open", "-R", job.output_path])
-            return True
+            norm_path = os.path.abspath(job.output_path)
+            try:
+                if sys.platform == "darwin":
+                    subprocess.run(["open", "-R", norm_path], check=False)
+                elif sys.platform == "win32":
+                    subprocess.run(["explorer.exe", f"/select,{norm_path}"], check=False)
+                else:
+                    subprocess.run(["xdg-open", os.path.dirname(norm_path)], check=False)
+                return True
+            except Exception:
+                return False
         return False
 
     def open_file(self, job_id: str) -> bool:
-        """Opens the completed file with default macOS application."""
+        """Opens the completed file with default OS application."""
         job = self.jobs.get(job_id)
         if job and job.output_path and os.path.exists(job.output_path):
-            subprocess.run(["open", job.output_path])
-            return True
+            norm_path = os.path.abspath(job.output_path)
+            try:
+                if sys.platform == "darwin":
+                    subprocess.run(["open", norm_path], check=False)
+                elif sys.platform == "win32":
+                    os.startfile(norm_path)
+                else:
+                    subprocess.run(["xdg-open", norm_path], check=False)
+                return True
+            except Exception:
+                return False
         return False

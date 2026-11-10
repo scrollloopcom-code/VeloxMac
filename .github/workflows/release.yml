@@ -1,0 +1,138 @@
+name: Build & Publish Velox Releases (macOS & Windows)
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Release Tag (e.g. v1.1.0)'
+        required: true
+        default: 'v1.1.0'
+
+permissions:
+  contents: write
+
+jobs:
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install System Dependencies
+        run: |
+          brew install ffmpeg
+
+      - name: Install Python Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pywebview uvicorn fastapi yt-dlp httpx pydantic pyobjc-framework-Cocoa
+
+      - name: Build macOS DMG and Update Archive
+        run: |
+          mkdir -p ~/Downloads/VeloxDownloads
+          python build_dmg.py
+
+      - name: Upload macOS Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-assets
+          path: |
+            ~/Downloads/VeloxDownloads/VeloxMac-v1.0.dmg
+            dist/VeloxMac.zip
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Inno Setup
+        run: |
+          choco install innosetup --no-progress
+
+      - name: Install Python Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyinstaller pywebview[edgechromium] uvicorn fastapi yt-dlp httpx pydantic pillow
+
+      - name: Build Windows Standalone EXE & Installer
+        run: |
+          python build_windows.py
+
+      - name: Upload Windows Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-assets
+          path: |
+            dist/*.zip
+            dist/*.exe
+
+  publish-release:
+    needs: [build-macos, build-windows]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Download macOS Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-assets
+          path: release_assets/
+
+      - name: Download Windows Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-assets
+          path: release_assets/
+
+      - name: List Release Assets
+        run: |
+          ls -la release_assets/
+
+      - name: Determine Tag Name
+        id: tag_info
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "tag=${{ github.event.inputs.tag_name }}" >> $GITHUB_OUTPUT
+          else
+            echo "tag=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create GitHub Release & Upload Assets
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag_info.outputs.tag }}
+          name: Velox ${{ steps.tag_info.outputs.tag }}
+          body: |
+            ## ⚡ Velox Next-Gen Media & IDM Downloader — ${{ steps.tag_info.outputs.tag }}
+
+            ### 🚀 What's New:
+            - **Cross-Platform Support**: Native binaries for both **macOS (DMG & in-place update zip)** and **Windows (Standalone Portable ZIP & Setup Installer)**.
+            - **Universal Social Media Extraction**: 4K YouTube, TikTok (No-Watermark), Instagram Reels, Facebook HD/SD, Twitter/X, and Reddit.
+            - **Interactive Trimmer Studio**: Frame-accurate Start [IN] and End [OUT] markers with glowing range timeline and authenticated audio/video preview.
+            - **Universal 1-Click Cookie Sync**: Chrome/Brave extension v1.1.
+
+            ---
+            ### 📦 Download Links:
+            - **macOS**: `VeloxMac-v1.0.dmg` (or `VeloxMac.zip` for in-app auto-update)
+            - **Windows**: `Velox-Windows-Setup.exe` (or `Velox-Windows-v1.0.0.zip` for portable use)
+          files: |
+            release_assets/*
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -18,13 +18,16 @@
           </svg>
         </div>
         <div class="app-title-group">
-          <span class="app-name">VeloxMac</span>
-          <span class="version-tag">PRO DESKTOP</span>
+          <span class="app-name">Velox</span>
+          <span class="version-tag" id="appVersionBadge">v1.0.0</span>
         </div>
       </div>
       
       <div class="system-status">
-        <button class="status-pill cookie-pill" id="cookieStatusBtn" style="cursor:pointer;" title="Configure YouTube Cookies">
+        <button class="status-pill update-nav-pill" id="updateNavBtn" style="display: none; cursor: pointer;" title="New version available! Click to update.">
+          <span class="dot update-dot"></span> <span id="updateNavText">⚡ Update Available</span>
+        </button>
+        <button class="status-pill cookie-pill" id="cookieStatusBtn" style="cursor:pointer;" title="Configure Cookies">
           <span class="dot" id="cookieDot" style="background:#f39c12"></span> <span id="cookieLabel">Cookies: None</span>
         </button>
         <span class="status-pill ffmpeg-pill" id="ffmpegStatus">
@@ -339,6 +342,65 @@
             ⚡ Apply & Download Clip Now
           </button>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Auto-Updater Modal -->
+  <div class="modal-backdrop" id="updateModal" style="display: none;">
+    <div class="modal-card update-modal-card">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <span class="modal-icon">⚡</span>
+          <div>
+            <h3 class="modal-title" id="updateModalTitle">Velox Software Update</h3>
+            <span class="modal-subtitle">A new release is available on GitHub with performance improvements and new features.</span>
+          </div>
+        </div>
+        <button class="modal-close-btn" id="closeUpdateModalBtn">&times;</button>
+      </div>
+
+      <div class="modal-body update-modal-body">
+        <div class="update-version-row">
+          <div class="version-chip current">
+            <span class="chip-label">Current Version</span>
+            <strong id="updateCurrentVer">v1.0.0</strong>
+          </div>
+          <span class="version-arrow">➔</span>
+          <div class="version-chip latest">
+            <span class="chip-label">New Version</span>
+            <strong id="updateLatestVer">v1.1.0</strong>
+          </div>
+        </div>
+
+        <div class="changelog-container">
+          <span class="changelog-label">What's New in this Release:</span>
+          <div class="changelog-body" id="updateChangelog">Loading changelog...</div>
+        </div>
+
+        <!-- Update Progress Section (active during downloading/applying) -->
+        <div class="update-progress-container" id="updateProgressSection" style="display: none;">
+          <div class="progress-status-row">
+            <span id="updateProgressStatusText">Downloading update package...</span>
+            <span id="updateProgressPercent">0%</span>
+          </div>
+          <div class="update-progress-track">
+            <div class="update-progress-fill" id="updateProgressFill" style="width: 0%;"></div>
+          </div>
+          <div class="update-meta-row">
+            <span id="updateSpeedText">-- KB/s</span>
+            <span id="updateDownloadedText">0 MB / 0 MB</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer update-modal-footer">
+        <button type="button" class="studio-secondary-btn" id="remindLaterBtn">
+          Remind Me Later
+        </button>
+        <button type="button" class="studio-download-now-btn" id="startUpdateNowBtn">
+          ⚡ 1-Click Update & Restart
+        </button>
       </div>
     </div>
   </div>

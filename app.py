@@ -13,6 +13,8 @@ from engine.job_manager import JobManager
 from engine.media_extractor import MediaExtractor
 from engine.muxer import FFMPEG_PATH, is_ffmpeg_available
 from engine.segmented_downloader import SegmentedDownloader
+from engine.updater import AutoUpdater
+from version import APP_NAME, APP_VERSION, GITHUB_OWNER, GITHUB_REPO
 
 # Base directories
 BASE_DIR = Path(__file__).resolve().parent
@@ -38,6 +40,7 @@ app.add_middleware(
 
 job_manager = JobManager(download_dir=DOWNLOADS_DIR, state_file=STATE_FILE)
 media_extractor = MediaExtractor(download_dir=DOWNLOADS_DIR)
+auto_updater = AutoUpdater(download_dir=DOWNLOADS_DIR)
 
 # Request Models
 class InspectRequest(BaseModel):
@@ -60,6 +63,9 @@ class DirectDownloadRequest(BaseModel):
 
 class CookieRequest(BaseModel):
     cookie_text: str
+
+class UpdateApplyRequest(BaseModel):
+    download_url: str
 
 @app.get("/api/cookies/status")
 def get_cookie_status():
@@ -179,23 +185,73 @@ def download_app_dmg():
 
 @app.post("/api/extension/reveal")
 def reveal_extension_in_finder():
-    import subprocess
+    import subprocess, sys
     ext_dir = os.path.join(BASE_DIR, "extension")
     try:
-        subprocess.run(["open", ext_dir], check=True)
-        return {"status": "ok", "message": "Opened extension directory in Finder"}
+        if sys.platform == "darwin":
+            subprocess.run(["open", ext_dir], check=False)
+        elif sys.platform == "win32":
+            subprocess.run(["explorer.exe", os.path.abspath(ext_dir)], check=False)
+        else:
+            subprocess.run(["xdg-open", ext_dir], check=False)
+        return {"status": "ok", "message": "Opened extension directory"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/downloads/reveal")
+def reveal_downloads_folder():
+    import subprocess, sys
+    try:
+        if sys.platform == "darwin":
+            subprocess.run(["open", DOWNLOADS_DIR], check=False)
+        elif sys.platform == "win32":
+            subprocess.run(["explorer.exe", os.path.abspath(DOWNLOADS_DIR)], check=False)
+        else:
+            subprocess.run(["xdg-open", DOWNLOADS_DIR], check=False)
+        return {"status": "ok", "message": "Opened downloads directory"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/system")
 def get_system_info():
+    import sys
+    os_name = "Windows" if sys.platform == "win32" else ("macOS" if sys.platform == "darwin" else "Linux")
     return {
-        "os": "macOS",
+        "app_name": APP_NAME,
+        "version": APP_VERSION,
+        "os": os_name,
+        "platform": sys.platform,
         "downloads_dir": DOWNLOADS_DIR,
         "ffmpeg_available": is_ffmpeg_available(),
         "ffmpeg_path": FFMPEG_PATH,
         "active_jobs_count": sum(1 for j in job_manager.jobs.values() if j.status in ("downloading", "assembling"))
     }
+
+@app.get("/api/updater/check")
+async def check_for_updates():
+    """Queries GitHub Releases to see if an update is available."""
+    res = await auto_updater.check_for_updates()
+    return res
+
+@app.post("/api/updater/apply")
+async def apply_update(req: UpdateApplyRequest):
+    """Downloads update package and restarts application in-place."""
+    if not req.download_url:
+        raise HTTPException(status_code=400, detail="Missing download_url")
+
+    def progress_callback(info: Dict[str, Any]):
+        job_manager.broadcast_update({
+            "type": "update_progress",
+            "progress": info
+        })
+
+    # Run update in background task
+    asyncio.create_task(auto_updater.download_and_apply_update(req.download_url, progress_callback))
+    return {"status": "started", "message": "Downloading update..."}
+
+@app.get("/api/updater/status")
+def get_updater_status():
+    return auto_updater.update_progress
 
 @app.post("/api/inspect")
 async def inspect_url(req: InspectRequest):

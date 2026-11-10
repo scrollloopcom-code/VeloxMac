@@ -34,9 +34,22 @@ document.addEventListener('DOMContentLoaded', () => {
   setupEventListeners();
   setupTrimmerStudioListeners();
   setupJobActionDelegation();
+  checkAppUpdates();
+  setupUpdaterListeners();
 });
 
 function setupEventListeners() {
+  const openDownloadsBtn = document.getElementById('openDownloadsFolder');
+  if (openDownloadsBtn) {
+    openDownloadsBtn.addEventListener('click', async () => {
+      try {
+        await fetch('/api/downloads/reveal', { method: 'POST' });
+      } catch (err) {
+        console.error(err);
+      }
+    });
+  }
+
   // Paste button
   pasteBtn.addEventListener('click', async () => {
     try {
@@ -643,10 +656,18 @@ async function checkSystemStatus() {
   try {
     const res = await fetch('/api/system');
     const data = await res.json();
+    if (data.version) {
+      const verBadge = document.getElementById('appVersionBadge');
+      if (verBadge) verBadge.textContent = 'v' + data.version;
+    }
     if (data.ffmpeg_available) {
       ffmpegStatus.innerHTML = '<span class="dot active"></span> FFmpeg Active';
     } else {
       ffmpegStatus.innerHTML = '<span class="dot" style="background:#e74c3c"></span> FFmpeg Missing';
+    }
+    const folderSpan = document.querySelector('#openDownloadsFolder span');
+    if (folderSpan && data.downloads_dir) {
+      folderSpan.textContent = `Downloads: ${data.downloads_dir}`;
     }
   } catch (e) {
     // ignore
@@ -1142,6 +1163,8 @@ function initWebSocket() {
         } else {
           showToast('Cookie sync window closed. No new cookies saved.', 'info');
         }
+      } else if (data.type === 'update_progress') {
+        handleUpdateProgress(data.progress);
       }
     } catch (e) {
       // ignore
@@ -1446,4 +1469,127 @@ function escapeHtml(str) {
     '"': '&quot;',
     "'": '&#39;'
   })[m]);
+}
+
+// ==========================================================================
+// In-App Auto-Updater Controller
+// ==========================================================================
+
+let latestUpdateData = null;
+
+async function checkAppUpdates() {
+  try {
+    const res = await fetch('/api/updater/check');
+    if (!res.ok) return;
+    const data = await res.json();
+    if (data.update_available) {
+      latestUpdateData = data;
+      const navBtn = document.getElementById('updateNavBtn');
+      const navText = document.getElementById('updateNavText');
+      if (navBtn && navText) {
+        navText.textContent = `⚡ Update Available (${data.latest_version})`;
+        navBtn.style.display = 'inline-flex';
+      }
+      showToast(`⚡ New Velox Update Available: v${data.latest_version}!`, 'info');
+    }
+  } catch (err) {
+    console.debug('Update check skipped:', err);
+  }
+}
+
+function setupUpdaterListeners() {
+  const navBtn = document.getElementById('updateNavBtn');
+  const modal = document.getElementById('updateModal');
+  const closeBtn = document.getElementById('closeUpdateModalBtn');
+  const remindBtn = document.getElementById('remindLaterBtn');
+  const updateNowBtn = document.getElementById('startUpdateNowBtn');
+
+  const curVer = document.getElementById('updateCurrentVer');
+  const latVer = document.getElementById('updateLatestVer');
+  const changelog = document.getElementById('updateChangelog');
+  const progressSection = document.getElementById('updateProgressSection');
+
+  function openUpdateModal() {
+    if (!latestUpdateData) return;
+    if (curVer) curVer.textContent = 'v' + latestUpdateData.current_version;
+    if (latVer) latVer.textContent = 'v' + latestUpdateData.latest_version;
+    if (changelog) changelog.textContent = latestUpdateData.changelog || 'Performance improvements and bug fixes.';
+    if (progressSection) progressSection.style.display = 'none';
+    if (updateNowBtn) {
+      updateNowBtn.disabled = false;
+      updateNowBtn.innerHTML = '⚡ 1-Click Update & Restart';
+    }
+    if (modal) modal.style.display = 'flex';
+  }
+
+  function closeUpdateModal() {
+    if (modal) modal.style.display = 'none';
+  }
+
+  if (navBtn) navBtn.addEventListener('click', openUpdateModal);
+  if (closeBtn) closeBtn.addEventListener('click', closeUpdateModal);
+  if (remindBtn) remindBtn.addEventListener('click', closeUpdateModal);
+
+  if (updateNowBtn) {
+    updateNowBtn.addEventListener('click', async () => {
+      if (!latestUpdateData || !latestUpdateData.download_url) {
+        showToast('No update download link available.', 'error');
+        return;
+      }
+      updateNowBtn.disabled = true;
+      updateNowBtn.innerHTML = '⏳ Downloading Update...';
+      if (progressSection) progressSection.style.display = 'block';
+
+      try {
+        const resp = await fetch('/api/updater/apply', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ download_url: latestUpdateData.download_url })
+        });
+        if (!resp.ok) {
+          const err = await resp.json();
+          throw new Error(err.detail || 'Failed to start update');
+        }
+      } catch (err) {
+        showToast(`Update error: ${err.message}`, 'error');
+        updateNowBtn.disabled = false;
+        updateNowBtn.innerHTML = '⚡ 1-Click Update & Restart';
+      }
+    });
+  }
+}
+
+function handleUpdateProgress(progress) {
+  const progressSection = document.getElementById('updateProgressSection');
+  const fill = document.getElementById('updateProgressFill');
+  const pct = document.getElementById('updateProgressPercent');
+  const statusText = document.getElementById('updateProgressStatusText');
+  const speedText = document.getElementById('updateSpeedText');
+  const dlText = document.getElementById('updateDownloadedText');
+  const updateNowBtn = document.getElementById('startUpdateNowBtn');
+
+  if (progressSection) progressSection.style.display = 'block';
+  if (fill) fill.style.width = `${progress.percent || 0}%`;
+  if (pct) pct.textContent = `${progress.percent || 0}%`;
+  if (statusText) statusText.textContent = progress.message || 'Updating...';
+
+  if (speedText && progress.speed > 0) {
+    speedText.textContent = `${(progress.speed / (1024 * 1024)).toFixed(1)} MB/s`;
+  }
+  if (dlText && progress.total_bytes > 0) {
+    dlText.textContent = `${(progress.downloaded_bytes / (1024 * 1024)).toFixed(1)} MB / ${(progress.total_bytes / (1024 * 1024)).toFixed(1)} MB`;
+  }
+
+  if (progress.status === 'applying') {
+    if (updateNowBtn) {
+      updateNowBtn.disabled = true;
+      updateNowBtn.innerHTML = '🔄 Restarting Velox...';
+    }
+  } else if (progress.status === 'error') {
+    if (updateNowBtn) {
+      updateNowBtn.disabled = false;
+      updateNowBtn.innerHTML = '⚡ Retry Update';
+    }
+    showToast(progress.message || 'Update failed', 'error');
+  }
 }

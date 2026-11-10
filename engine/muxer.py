@@ -1,30 +1,43 @@
 import os
 import shutil
 import subprocess
+import sys
 from typing import Optional
 
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
 def find_ffmpeg() -> Optional[str]:
-    """Finds the best available ffmpeg binary on macOS."""
+    """Finds the best available ffmpeg binary across macOS, Windows, and Linux."""
+    exe_name = "ffmpeg.exe" if sys.platform == "win32" else "ffmpeg"
     candidates = [
+        os.path.join(BASE_DIR, "bin", exe_name),
+        os.path.join(BASE_DIR, exe_name),
         "/opt/homebrew/bin/ffmpeg",
         "/usr/local/bin/ffmpeg",
+        shutil.which(exe_name),
         shutil.which("ffmpeg")
     ]
     for c in candidates:
-        if c and os.path.exists(c) and os.access(c, os.X_OK):
-            return c
+        if c and os.path.exists(c):
+            if sys.platform == "win32" or os.access(c, os.X_OK):
+                return c
     return None
 
 def find_ffprobe() -> Optional[str]:
-    """Finds the best available ffprobe binary on macOS."""
+    """Finds the best available ffprobe binary across macOS, Windows, and Linux."""
+    exe_name = "ffprobe.exe" if sys.platform == "win32" else "ffprobe"
     candidates = [
+        os.path.join(BASE_DIR, "bin", exe_name),
+        os.path.join(BASE_DIR, exe_name),
         "/opt/homebrew/bin/ffprobe",
         "/usr/local/bin/ffprobe",
+        shutil.which(exe_name),
         shutil.which("ffprobe")
     ]
     for c in candidates:
-        if c and os.path.exists(c) and os.access(c, os.X_OK):
-            return c
+        if c and os.path.exists(c):
+            if sys.platform == "win32" or os.access(c, os.X_OK):
+                return c
     return None
 
 FFMPEG_PATH = find_ffmpeg()
@@ -36,27 +49,35 @@ def is_ffmpeg_available() -> bool:
 def run_ffmpeg(args: list[str], timeout: Optional[int] = 300) -> subprocess.CompletedProcess:
     """Runs ffmpeg with provided arguments, hard memory cap and thread limits."""
     if not FFMPEG_PATH:
-        raise RuntimeError("ffmpeg binary not found on macOS system")
+        raise RuntimeError("ffmpeg binary not found on this system")
     # Prepend thread-limiting flags before user args so user args can override
     # -threads 2 caps CPU threads; -hide_banner reduces noise
     base_args = ["-threads", "2", "-hide_banner"]
     cmd = [FFMPEG_PATH] + base_args + args
 
-    import resource
-    def set_limits():
-        # Cap virtual memory at 2 GB to prevent runaway ffmpeg RAM usage
-        two_gb = 2 * 1024 * 1024 * 1024
+    preexec = None
+    if sys.platform != "win32":
         try:
-            resource.setrlimit(resource.RLIMIT_AS, (two_gb, two_gb))
-        except Exception:
+            import resource
+            def set_limits():
+                two_gb = 2 * 1024 * 1024 * 1024
+                try:
+                    resource.setrlimit(resource.RLIMIT_AS, (two_gb, two_gb))
+                except Exception:
+                    pass
+            preexec = set_limits
+        except ImportError:
             pass
+
+    creationflags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
 
     return subprocess.run(
         cmd,
         capture_output=True,
         text=True,
         timeout=timeout,
-        preexec_fn=set_limits,
+        preexec_fn=preexec,
+        creationflags=creationflags
     )
 
 def get_media_duration(file_path: str) -> Optional[float]:
