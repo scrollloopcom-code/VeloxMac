@@ -159,35 +159,26 @@
         <span class="footer-sep">•</span>
         <span class="footer-text">Crafted by <span class="footer-author">Lahiru_nk</span></span>
       </div>
-      <div class="footer-fleet-status" id="footerFleetStatus" title="Click to view Multi-Device Cookie Vault" style="cursor: pointer;">
-        <span class="fleet-icon">💻</span>
-        <span id="footerFleetText">Fleet Vault: Detecting machine...</span>
+      <div class="footer-fleet-status" id="footerFleetStatus" title="Click to view Cookie Vault & Login Manager" style="cursor: pointer;">
+        <span class="fleet-icon">🔐</span>
+        <span id="footerFleetText">Cookie Vault: Ready</span>
       </div>
     </footer>
   </div>
 
   <!-- Cookie Manager & Multi-Device Vault Modal -->
+  <!-- Streamlined Multi-Platform Cookie Vault Modal -->
   <div class="modal-backdrop" id="cookieModal" style="display: none;">
     <div class="modal-card desktop-prefs-card cookie-vault-modal-card">
       <div class="modal-header">
         <div class="modal-title-group">
           <span class="modal-icon">🔐</span>
           <div>
-            <h3 class="modal-title">Multi-Device Cookie Vault & Session Manager</h3>
-            <span class="modal-subtitle">LoopCatch Fleet Edition by Scroll Loop • Save & switch cookies across all your PCs</span>
+            <h3 class="modal-title">Cookie Vault & Session Manager</h3>
+            <span class="modal-subtitle">LoopCatch by Scroll Loop • Authenticated 4K streams, private media & age-restricted videos</span>
           </div>
         </div>
         <button class="modal-close-btn" id="closeCookieModal">&times;</button>
-      </div>
-
-      <!-- Vault Mode Navigation Tabs -->
-      <div class="vault-tabs-nav">
-        <button type="button" class="vault-tab-btn active" id="tabVaultDevicesBtn">
-          💻 Saved Device Profiles (<span id="vaultDeviceCount">1</span>)
-        </button>
-        <button type="button" class="vault-tab-btn" id="tabSyncCookiesBtn">
-          ⚡ Sync / Add Cookies to This PC
-        </button>
       </div>
 
       <div class="modal-body desktop-modal-body">
@@ -210,82 +201,84 @@
           </div>
         </div>
 
-        <!-- TAB 1: Multi-Device Vault Profiles List -->
-        <div class="vault-tab-panel" id="panelVaultDevices">
-          <div class="vault-info-banner">
-            <div class="vault-info-text">
-              <strong>Multi-PC Sharing:</strong> Each PC automatically saves its cookies to its own file in <code>cookie_vault/</code>. When switching PCs or moving files via USB/Cloud, click <strong>"Switch Active"</strong> to use any machine's cookies!
-            </div>
-            <button type="button" class="vault-refresh-btn" id="refreshVaultBtn" title="Scan folder for new device cookie files">
-              🔄 Refresh List
-            </button>
+        <!-- Method 1: Built-in 1-Click Login Window (Primary, Super Easy, No Extensions!) -->
+        <div class="cookie-method-card featured">
+          <div class="method-header-flex">
+            <span class="method-badge">EASIEST • ZERO EXTENSION REQUIRED</span>
           </div>
-
-          <!-- Dynamically populated device profile cards -->
-          <div class="vault-devices-container" id="vaultDevicesContainer">
-            <div class="vault-loading-state">Loading saved devices from vault...</div>
+          <div class="method-title">🔑 1-Click Built-in Login (macOS & Windows)</div>
+          <p class="method-sub">
+            Click any platform to sign in. LoopCatch opens a native window and automatically captures and saves your cookies to your vault folder in real-time:
+          </p>
+          <div class="login-platforms-grid">
+            <button type="button" class="login-platform-btn btn-youtube" id="loginYouTubeBtn" title="Login to YouTube / Google">
+              <span class="lp-icon">▶️</span>
+              <div class="lp-info">
+                <strong>YouTube / Google</strong>
+                <span>4K/8K, Premium, Age-gated</span>
+              </div>
+            </button>
+            <button type="button" class="login-platform-btn btn-tiktok" id="loginTikTokBtn" title="Login to TikTok">
+              <span class="lp-icon">🎵</span>
+              <div class="lp-info">
+                <strong>TikTok</strong>
+                <span>HD No-Watermark, Private</span>
+              </div>
+            </button>
+            <button type="button" class="login-platform-btn btn-instagram" id="loginInstaBtn" title="Login to Instagram">
+              <span class="lp-icon">📸</span>
+              <div class="lp-info">
+                <strong>Instagram</strong>
+                <span>Stories, Reels, High-res</span>
+              </div>
+            </button>
+            <button type="button" class="login-platform-btn btn-facebook" id="loginFacebookBtn" title="Login to Facebook">
+              <span class="lp-icon">📘</span>
+              <div class="lp-info">
+                <strong>Facebook</strong>
+                <span>HD Video, Private groups</span>
+              </div>
+            </button>
           </div>
         </div>
 
-        <!-- TAB 2: Sync / Add Cookies to Current PC -->
-        <div class="vault-tab-panel" id="panelSyncCookies" style="display: none;">
-          <!-- Custom Device Name input -->
-          <div class="device-naming-box">
-            <div class="naming-label">
-              <span>🏷️ Name for This Computer:</span>
-              <span class="naming-hint">(Shown in vault profiles on your other PCs)</span>
+        <!-- Method 2 & 3: Browser Auto-Import & File Upload -->
+        <div class="desktop-cookie-grid" style="margin-top: 14px;">
+          <!-- 1-Click Browser Import -->
+          <div class="cookie-method-card desktop-col">
+            <div class="method-title">⚡ 1-Click Browser Import</div>
+            <p class="method-sub">
+              Logged in on your desktop browser? Grab cookies directly without re-entering passwords:
+            </p>
+            <div class="browser-import-buttons">
+              <button type="button" class="browser-btn" data-browser="chrome">🌐 Chrome</button>
+              <button type="button" class="browser-btn" data-browser="brave">🦁 Brave</button>
+              <button type="button" class="browser-btn" data-browser="edge">🌊 Edge</button>
+              <button type="button" class="browser-btn" data-browser="firefox">🦊 Firefox</button>
             </div>
-            <div class="naming-input-row">
-              <input type="text" id="customDeviceNameInput" placeholder="e.g. Lahiru's Mac Mini M6" class="naming-field">
-              <button type="button" class="rename-save-btn" id="saveDeviceNameBtn">Save Device Name</button>
-            </div>
+            <div id="browserImportStatus" class="browser-import-status" style="display: none;"></div>
           </div>
 
-          <!-- 2-Column Desktop Grid -->
-          <div class="desktop-cookie-grid">
-            <!-- Column 1: Browser Extension (Recommended) -->
-            <div class="cookie-method-card featured desktop-col">
-              <div class="method-header-flex">
-                <span class="method-badge">RECOMMENDED • FASTEST</span>
-              </div>
-              <div class="method-title">🧩 Brave & Chrome Extension Bridge</div>
-              <p class="method-sub">
-                Logged in on your browser? Sync all YouTube, Instagram, Facebook, TikTok & X cookies to this PC's vault profile with 1 click:
-              </p>
-
-              <div class="extension-actions-row">
-                <button type="button" class="sync-large-btn" id="openExtFolderBtn">
-                  📂 Open Extension in Finder
-                </button>
-                <a href="/api/extension/download" download="LoopCatch-Extension.zip" class="upload-cookie-btn" style="text-decoration:none;">
-                  📥 Download .ZIP
-                </a>
-              </div>
-
-              <div class="extension-steps">
-                <div class="step-item"><span class="step-num">1</span> Go to <code>chrome://extensions</code> or <code>brave://extensions</code></div>
-                <div class="step-item"><span class="step-num">2</span> Turn on <strong>Developer mode</strong> (top right switch)</div>
-                <div class="step-item"><span class="step-num">3</span> Drag & drop the <strong>extension</strong> folder into the browser</div>
-                <div class="step-item"><span class="step-num">4</span> Click the LoopCatch extension &rarr; <strong>"⚡ 1-Click Sync"</strong></div>
-              </div>
-            </div>
-
-            <!-- Column 2: File Import & Manual Paste -->
-            <div class="desktop-col right-col">
-              <!-- Manual File / Paste Card -->
-              <div class="cookie-method-card">
-                <div class="method-title">📁 Option B: Import / Paste cookies.txt</div>
-                <div class="manual-cookie-tabs">
-                  <input type="file" id="cookieFileInput" accept=".txt" style="display: none;">
-                  <button type="button" class="upload-cookie-btn" id="selectCookieFileBtn" style="margin-bottom: 8px; width: 100%;">
-                    📂 Choose cookies.txt File
-                  </button>
-                  <textarea id="cookieTextInput" rows="4" placeholder="Or paste Netscape cookie string here..."></textarea>
-                  <button type="button" class="save-cookie-btn" id="saveCookieTextBtn" style="margin-top: 6px; width: 100%;">Save to This PC Vault</button>
-                </div>
-              </div>
+          <!-- File Upload / Paste -->
+          <div class="cookie-method-card desktop-col right-col">
+            <div class="method-title">📂 Import or Paste cookies.txt</div>
+            <p class="method-sub">
+              Have an exported cookies file? Load it directly:
+            </p>
+            <div class="manual-cookie-tabs">
+              <input type="file" id="cookieFileInput" accept=".txt" style="display: none;">
+              <button type="button" class="upload-cookie-btn" id="selectCookieFileBtn" style="margin-bottom: 8px; width: 100%;">
+                📂 Choose cookies.txt File
+              </button>
+              <textarea id="cookieTextInput" rows="2" placeholder="Or paste Netscape cookie string here..."></textarea>
+              <button type="button" class="save-cookie-btn" id="saveCookieTextBtn" style="margin-top: 6px; width: 100%;">Save to Vault</button>
             </div>
           </div>
+        </div>
+
+        <!-- Silent Vault Info Note -->
+        <div class="vault-silent-footer-note">
+          📁 All machine profiles are automatically saved to your computer's folder at <code>cookie_vault/</code>. Click <strong>"Open Vault Folder"</strong> above to view, copy, or move your cookie files between PCs anytime.
         </div>
       </div>
     </div>

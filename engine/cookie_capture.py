@@ -88,10 +88,19 @@ class CookieSyncApi:
             
             if saved_count > 0:
                 os.makedirs(os.path.dirname(self.output_path), exist_ok=True)
+                cookie_content = "".join(lines)
                 with open(self.output_path, "w", encoding="utf-8") as f:
-                    f.writelines(lines)
+                    f.write(cookie_content)
                 self.captured = True
                 self.count = saved_count
+
+                # Silently sync into cookie_vault directory for this machine
+                try:
+                    from engine.cookie_vault import CookieVaultManager
+                    vault = CookieVaultManager(base_download_dir=os.path.dirname(self.output_path))
+                    vault.save_device_cookies(cookie_content)
+                except Exception:
+                    pass
             return saved_count
         except Exception:
             return 0
@@ -162,17 +171,28 @@ def background_auto_saver(window, api: CookieSyncApi):
         time.sleep(2)
 
 def main():
-    parser = argparse.ArgumentParser(description="LoopCatch 1-Click YouTube Cookie Sync")
+    parser = argparse.ArgumentParser(description="LoopCatch 1-Click Login & Cookie Sync")
     parser.add_argument("--output", default=DEFAULT_COOKIE_PATH, help="Path to save cookies.txt")
     parser.add_argument("--url", default="https://www.youtube.com", help="Initial URL")
     args = parser.parse_args()
 
+    win_title = "⚡ LoopCatch — 1-Click Login & Cookie Sync"
+    target_lower = args.url.lower()
+    if "tiktok" in target_lower:
+        win_title = "⚡ LoopCatch — TikTok Login & Cookie Sync"
+    elif "instagram" in target_lower:
+        win_title = "⚡ LoopCatch — Instagram Login & Cookie Sync"
+    elif "facebook" in target_lower:
+        win_title = "⚡ LoopCatch — Facebook Login & Cookie Sync"
+    elif "youtube" in target_lower or "google" in target_lower:
+        win_title = "⚡ LoopCatch — YouTube / Google Login & Cookie Sync"
+
     api = CookieSyncApi(args.output)
     win = webview.create_window(
-        title="⚡ LoopCatch — 1-Click YouTube Login & Cookie Sync",
+        title=win_title,
         url=args.url,
-        width=880,
-        height=680,
+        width=920,
+        height=720,
         js_api=api
     )
     api.set_window(win)

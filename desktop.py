@@ -53,4 +53,9 @@ def main():
         webview.start()
 
 if __name__ == "__main__":
+    if "--capture-cookies" in sys.argv:
+        from engine.cookie_capture import main as capture_main
+        sys.argv.remove("--capture-cookies")
+        capture_main()
+        sys.exit(0)
     main()
