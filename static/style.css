@@ -2612,6 +2612,69 @@ body {
   transform: translateY(-1px);
 }
 
+/* Auto-Sync Main 1-Click Hero Button */
+.auto-sync-action-box {
+  margin-top: 10px;
+}
+
+.auto-sync-main-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  background: linear-gradient(135deg, rgba(0, 242, 254, 0.18), rgba(79, 172, 254, 0.18));
+  border: 1.5px solid var(--accent-cyan);
+  border-radius: 12px;
+  padding: 12px 20px;
+  cursor: pointer;
+  color: #fff;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 0 20px rgba(0, 242, 254, 0.15);
+}
+
+.auto-sync-main-btn:hover {
+  background: linear-gradient(135deg, rgba(0, 242, 254, 0.3), rgba(79, 172, 254, 0.3));
+  box-shadow: 0 0 30px rgba(0, 242, 254, 0.35);
+  transform: translateY(-2px);
+}
+
+.auto-sync-main-btn .sync-icon {
+  font-size: 24px;
+}
+
+.auto-sync-main-btn .sync-info {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+  gap: 2px;
+}
+
+.auto-sync-main-btn .sync-info strong {
+  font-size: 14.5px;
+  font-weight: 800;
+  letter-spacing: -0.2px;
+  color: #ffffff;
+}
+
+.auto-sync-main-btn .sync-info span {
+  font-size: 11.5px;
+  color: var(--accent-cyan);
+}
+
+.browser-quick-row {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.quick-label {
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
 /* Login Platforms 4-Grid (Zero Extension Built-in Login) */
 .login-platforms-grid {
   display: grid;

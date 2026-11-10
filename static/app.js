@@ -274,7 +274,7 @@ function setupEventListeners() {
     }
   });
 
-  // 1-Click Desktop Browser Auto-Imports (Chrome, Brave, Edge, Firefox)
+  // 1-Click Desktop Browser Auto-Imports (Chrome, Brave, Edge, Firefox, Auto)
   const browserBtns = document.querySelectorAll('.browser-btn');
   const browserImportStatus = document.getElementById('browserImportStatus');
 
@@ -282,13 +282,21 @@ function setupEventListeners() {
     btn.addEventListener('click', async () => {
       const browser = btn.dataset.browser;
       if (!browser) return;
+      const isAuto = (browser === 'auto');
+      const originalHtml = btn.innerHTML;
       btn.disabled = true;
-      btn.textContent = '⏳ Importing...';
+      if (isAuto) {
+        btn.innerHTML = `<span class="sync-icon">⏳</span><div class="sync-info"><strong>Scanning All Desktop Browsers...</strong><span>Checking Edge, Chrome, Brave & Firefox</span></div>`;
+      } else {
+        btn.textContent = '⏳ Reading...';
+      }
+
       if (browserImportStatus) {
         browserImportStatus.style.display = 'block';
         browserImportStatus.className = 'browser-import-status';
-        browserImportStatus.textContent = `Reading cookies from ${browser.toUpperCase()}...`;
+        browserImportStatus.textContent = isAuto ? 'Scanning installed browsers for active sessions...' : `Reading cookies from ${browser.toUpperCase()}...`;
       }
+
       try {
         const res = await fetch('/api/cookies/import-browser', {
           method: 'POST',
@@ -300,14 +308,14 @@ function setupEventListeners() {
           showToast(`✅ Successfully imported ${data.count} cookies from ${data.browser}!`);
           if (browserImportStatus) {
             browserImportStatus.className = 'browser-import-status success';
-            browserImportStatus.textContent = `✅ Imported ${data.count} cookies from ${data.browser}`;
+            browserImportStatus.textContent = `✅ Successfully imported ${data.count} cookies from ${data.browser}`;
           }
           checkCookieStatus();
         } else {
           showToast(data.message || 'Browser import failed', 'error');
           if (browserImportStatus) {
             browserImportStatus.className = 'browser-import-status error';
-            browserImportStatus.textContent = data.message || 'Could not read browser cookies. Use Built-in Login!';
+            browserImportStatus.textContent = data.message || 'Could not auto-read browser cookies. Use Option 2 (Built-in Login) below!';
           }
         }
       } catch (e) {
@@ -318,8 +326,7 @@ function setupEventListeners() {
         }
       } finally {
         btn.disabled = false;
-        const bLabels = { chrome: '🌐 Chrome', brave: '🦁 Brave', edge: '🌊 Edge', firefox: '🦊 Firefox' };
-        btn.textContent = bLabels[browser] || browser;
+        btn.innerHTML = originalHtml;
       }
     });
   });

@@ -201,14 +201,41 @@
           </div>
         </div>
 
-        <!-- Method 1: Built-in 1-Click Login Window (Primary, Super Easy, No Extensions!) -->
+        <!-- Option 1: 1-Click Instant Browser Sync (No Extension Required!) -->
         <div class="cookie-method-card featured">
           <div class="method-header-flex">
-            <span class="method-badge">EASIEST • ZERO EXTENSION REQUIRED</span>
+            <span class="method-badge">RECOMMENDED • FASTEST • ZERO EXTENSIONS</span>
           </div>
-          <div class="method-title">🔑 1-Click Built-in Login (macOS & Windows)</div>
+          <div class="method-title">⚡ 1-Click Instant Browser Sync (Windows & Mac)</div>
           <p class="method-sub">
-            Click any platform to sign in. LoopCatch opens a native window and automatically captures and saves your cookies to your vault folder in real-time:
+            Logged in on Chrome, Edge, Brave, or Firefox? Click below to instantly pull all your active cookies in 1 second without typing any passwords:
+          </p>
+          <div class="auto-sync-action-box">
+            <button type="button" class="auto-sync-main-btn browser-btn" id="autoSyncBrowserBtn" data-browser="auto">
+              <span class="sync-icon">🚀</span>
+              <div class="sync-info">
+                <strong>1-Click Auto-Detect & Sync All Cookies</strong>
+                <span>Directly reads Edge, Chrome, Brave or Firefox session cookies</span>
+              </div>
+            </button>
+          </div>
+          <div class="browser-quick-row">
+            <span class="quick-label">Or sync from a specific browser:</span>
+            <div class="browser-import-buttons">
+              <button type="button" class="browser-btn" data-browser="edge">🌊 Edge</button>
+              <button type="button" class="browser-btn" data-browser="chrome">🌐 Chrome</button>
+              <button type="button" class="browser-btn" data-browser="brave">🦁 Brave</button>
+              <button type="button" class="browser-btn" data-browser="firefox">🦊 Firefox</button>
+            </div>
+          </div>
+          <div id="browserImportStatus" class="browser-import-status" style="display: none;"></div>
+        </div>
+
+        <!-- Option 2: Built-in Login Window (If Browser is Locked or Incognito) -->
+        <div class="cookie-method-card" style="margin-top: 14px;">
+          <div class="method-title">🔑 Option 2: Built-in Login Window (Fallback)</div>
+          <p class="method-sub">
+            Want to sign in fresh? Click a platform to open a dedicated login window — cookies auto-save in real-time:
           </p>
           <div class="login-platforms-grid">
             <button type="button" class="login-platform-btn btn-youtube" id="loginYouTubeBtn" title="Login to YouTube / Google">
@@ -242,37 +269,18 @@
           </div>
         </div>
 
-        <!-- Method 2 & 3: Browser Auto-Import & File Upload -->
-        <div class="desktop-cookie-grid" style="margin-top: 14px;">
-          <!-- 1-Click Browser Import -->
-          <div class="cookie-method-card desktop-col">
-            <div class="method-title">⚡ 1-Click Browser Import</div>
-            <p class="method-sub">
-              Logged in on your desktop browser? Grab cookies directly without re-entering passwords:
-            </p>
-            <div class="browser-import-buttons">
-              <button type="button" class="browser-btn" data-browser="chrome">🌐 Chrome</button>
-              <button type="button" class="browser-btn" data-browser="brave">🦁 Brave</button>
-              <button type="button" class="browser-btn" data-browser="edge">🌊 Edge</button>
-              <button type="button" class="browser-btn" data-browser="firefox">🦊 Firefox</button>
-            </div>
-            <div id="browserImportStatus" class="browser-import-status" style="display: none;"></div>
-          </div>
-
-          <!-- File Upload / Paste -->
-          <div class="cookie-method-card desktop-col right-col">
-            <div class="method-title">📂 Import or Paste cookies.txt</div>
-            <p class="method-sub">
-              Have an exported cookies file? Load it directly:
-            </p>
-            <div class="manual-cookie-tabs">
-              <input type="file" id="cookieFileInput" accept=".txt" style="display: none;">
-              <button type="button" class="upload-cookie-btn" id="selectCookieFileBtn" style="margin-bottom: 8px; width: 100%;">
+        <!-- Option 3: File Import / Paste -->
+        <div class="cookie-method-card" style="margin-top: 14px;">
+          <div class="method-title">📂 Option 3: Import or Paste cookies.txt File</div>
+          <div class="manual-cookie-tabs" style="margin-top: 8px;">
+            <input type="file" id="cookieFileInput" accept=".txt" style="display: none;">
+            <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+              <button type="button" class="upload-cookie-btn" id="selectCookieFileBtn" style="flex: 1;">
                 📂 Choose cookies.txt File
               </button>
-              <textarea id="cookieTextInput" rows="2" placeholder="Or paste Netscape cookie string here..."></textarea>
-              <button type="button" class="save-cookie-btn" id="saveCookieTextBtn" style="margin-top: 6px; width: 100%;">Save to Vault</button>
+              <button type="button" class="save-cookie-btn" id="saveCookieTextBtn" style="flex: 1;">Save Pasted Text</button>
             </div>
+            <textarea id="cookieTextInput" rows="2" placeholder="Or paste Netscape cookie string here..."></textarea>
           </div>
         </div>
 

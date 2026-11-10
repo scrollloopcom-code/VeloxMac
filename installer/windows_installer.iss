@@ -2,7 +2,7 @@
 ; Builds a clean, professional installer with Start Menu, Desktop shortcuts, and Uninstaller.
 
 #define MyAppName "LoopCatch"
-#define MyAppVersion "1.2.0"
+#define MyAppVersion "1.2.1"
 #define MyAppPublisher "Scroll Loop (Lahiru_nk)"
 #define MyAppURL "https://github.com/scrollloopcom-code/VeloxMac"
 #define MyAppExeName "LoopCatch.exe"

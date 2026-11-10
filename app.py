@@ -268,27 +268,41 @@ async def launch_cookie_capture(req: Optional[CaptureRequest] = None):
 
 @app.post("/api/cookies/import-browser")
 async def import_browser_cookies(req: BrowserImportRequest):
-    """Directly extracts cookies from installed desktop browser (Chrome, Brave, Edge, Firefox)."""
+    """Directly extracts cookies from installed desktop browser (Chrome, Edge, Brave, Firefox) without extensions."""
     browser = req.browser.lower().strip()
     cookie_path = os.path.join(DOWNLOADS_DIR, "cookies.txt")
 
     def _do_import():
         from yt_dlp.cookies import extract_cookies_from_browser
         import http.cookiejar
-        cj = extract_cookies_from_browser(browser)
-        jar = http.cookiejar.MozillaCookieJar(cookie_path)
-        count = 0
-        for cookie in cj:
-            jar.set_cookie(cookie)
-            count += 1
-        jar.save(ignore_discard=True, ignore_expires=True)
-        return count
+
+        candidates = [browser] if browser != "auto" else ["chrome", "edge", "brave", "firefox", "safari"]
+        last_error = None
+        for b in candidates:
+            try:
+                cj = extract_cookies_from_browser(b)
+                if not cj:
+                    continue
+                jar = http.cookiejar.MozillaCookieJar(cookie_path)
+                count = 0
+                for cookie in cj:
+                    jar.set_cookie(cookie)
+                    count += 1
+                if count > 0:
+                    jar.save(ignore_discard=True, ignore_expires=True)
+                    return count, b.capitalize()
+            except Exception as e:
+                last_error = e
+                continue
+        if last_error and browser != "auto":
+            raise last_error
+        return 0, browser.capitalize()
 
     loop = asyncio.get_running_loop()
     try:
-        count = await loop.run_in_executor(None, _do_import)
+        count, detected_browser = await loop.run_in_executor(None, _do_import)
         if count == 0:
-            return {"status": "empty", "message": f"No cookies found in {browser.capitalize()}."}
+            return {"status": "empty", "message": "No cookies found in any installed browser. Try Option 2 (Built-in Login Window)."}
 
         # Silently update vault
         with open(cookie_path, "r", encoding="utf-8", errors="ignore") as f:
@@ -300,11 +314,11 @@ async def import_browser_cookies(req: BrowserImportRequest):
             "count": count,
             "path": cookie_path
         })
-        return {"status": "ok", "count": count, "browser": browser.capitalize()}
+        return {"status": "ok", "count": count, "browser": detected_browser}
     except Exception as e:
         return {
             "status": "error",
-            "message": f"Could not read from {browser.capitalize()}: {str(e)}. Use the 1-Click Login Window instead!"
+            "message": f"Could not read from browser: {str(e)}. Use Option 2 (Built-in Login) below!"
         }
 
 @app.get("/api/extension/download")
