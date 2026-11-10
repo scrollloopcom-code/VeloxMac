@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "VeloxMac Cookie Bridge",
-  "version": "1.0.0",
-  "description": "1-Click YouTube & BotGuard Cookie Sync for VeloxMac Media Downloader",
+  "version": "1.1.0",
+  "description": "Universal 1-Click Cookie Sync for YouTube, Instagram, Facebook, TikTok & X",
   "permissions": [
     "cookies",
     "activeTab"
@@ -10,6 +10,12 @@
   "host_permissions": [
     "*://*.youtube.com/*",
     "*://*.google.com/*",
+    "*://*.instagram.com/*",
+    "*://*.facebook.com/*",
+    "*://*.tiktok.com/*",
+    "*://*.twitter.com/*",
+    "*://*.x.com/*",
+    "*://*.reddit.com/*",
     "http://127.0.0.1:8899/*",
     "http://localhost:8899/*"
   ],

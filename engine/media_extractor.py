@@ -4,6 +4,7 @@ import shutil
 import threading
 import time
 from typing import Any, Callable, Dict, List, Optional
+import httpx
 import yt_dlp
 from yt_dlp.utils import download_range_func
 
@@ -64,8 +65,31 @@ class MediaExtractor:
             opts["ffmpeg_location"] = FFMPEG_PATH
         return opts
 
+    @staticmethod
+    def canonicalize_url(url: str) -> str:
+        """Expands shortened URLs (fb.watch, vm.tiktok.com, vt.tiktok.com, t.co, bit.ly, etc.)
+        to their full canonical URLs to ensure maximum extractor compatibility.
+        """
+        if not url:
+            return ""
+        clean_url = url.strip()
+        short_domains = ("fb.watch", "vm.tiktok.com", "vt.tiktok.com", "t.co", "bit.ly", "tinyurl.com", "instagr.am")
+        if any(d in clean_url.lower() for d in short_domains):
+            try:
+                with httpx.Client(follow_redirects=True, timeout=8.0, headers={"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)"}) as client:
+                    resp = client.head(clean_url)
+                    if resp.status_code in (200, 301, 302, 303, 307, 308) and str(resp.url) != clean_url:
+                        return str(resp.url)
+                    resp = client.get(clean_url)
+                    if str(resp.url) != clean_url:
+                        return str(resp.url)
+            except Exception:
+                pass
+        return clean_url
+
     def inspect(self, url: str, browser_cookies: Optional[str] = None) -> Dict[str, Any]:
         """Extracts metadata and structured resolution/audio choices from a media URL."""
+        url = self.canonicalize_url(url)
         opts = self.get_base_opts(browser_cookies=browser_cookies)
         opts["extract_flat"] = False
         opts["skip_download"] = True
@@ -104,32 +128,71 @@ class MediaExtractor:
                 144: "144p"
             }
 
-            for f in sorted(raw_formats, key=lambda x: (x.get("height") or 0, x.get("tbr") or 0), reverse=True):
+            def get_sort_key(f):
+                h = f.get("height") or 0
+                if not h:
+                    fid = (f.get("format_id") or "").lower()
+                    if "hd" in fid: h = 720
+                    elif "sd" in fid: h = 480
+                return (h, f.get("tbr") or 0)
+
+            for f in sorted(raw_formats, key=get_sort_key, reverse=True):
+                fid = f.get("format_id") or ""
+                vcodec = f.get("vcodec") or ""
+                acodec = f.get("acodec") or ""
+
+                # Skip audio-only streams
+                if vcodec == "none" and acodec != "none":
+                    continue
+
                 h = f.get("height")
-                vcodec = f.get("vcodec", "none")
-                if not h or vcodec == "none":
-                    continue
+                if not h:
+                    res_str = f.get("resolution") or ""
+                    if "x" in res_str:
+                        try:
+                            parts = [int(p) for p in res_str.split("x") if p.isdigit()]
+                            if parts:
+                                h = min(parts)
+                        except Exception:
+                            pass
+                    if not h:
+                        fid_lower = fid.lower()
+                        note_lower = (f.get("format_note") or "").lower()
+                        combined_id = fid_lower + " " + note_lower
+                        if "hd" in combined_id:
+                            h = 720
+                        elif "sd" in combined_id:
+                            h = 480
+                        else:
+                            digits = re.findall(r"(\d{3,4})p?", combined_id)
+                            if digits:
+                                h = int(digits[0])
 
-                if h in seen_resolutions:
-                    continue
-                seen_resolutions.add(h)
+                label = res_labels.get(h, f"{h}p" if h else fid.upper())
+                if fid.lower() == "hd":
+                    label = "HD Quality (High Definition)"
+                elif fid.lower() == "sd":
+                    label = "SD Quality (Standard Definition)"
 
-                label = res_labels.get(h, f"{h}p")
                 fps = f.get("fps")
-                if fps and fps > 30:
+                if fps and fps > 30 and h:
                     label += f" {int(fps)}fps"
 
                 # Calculate estimated size
                 filesize = f.get("filesize") or f.get("filesize_approx")
-                filesize_str = self._format_size(filesize) if filesize else "Adaptive"
+                filesize_str = self._format_size(filesize) if filesize else "Direct Stream"
 
-                format_id = f.get("format_id")
+                key = h if h else fid
+                if key in seen_resolutions:
+                    continue
+                seen_resolutions.add(key)
+
                 video_options.append({
-                    "id": f"video_{h}_{format_id}",
-                    "format_id": format_id,
-                    "height": h,
+                    "id": f"video_{key}_{fid}",
+                    "format_id": fid or "best",
+                    "height": h or 720,
                     "label": label,
-                    "ext": "mp4",
+                    "ext": f.get("ext") or "mp4",
                     "filesize": filesize,
                     "filesize_str": filesize_str,
                     "type": "video"
@@ -244,6 +307,7 @@ class MediaExtractor:
         clip_end: Optional[float] = None
     ) -> str:
         """Downloads selected media stream with 16x multi-connection acceleration, clipping, and ffmpeg muxing."""
+        url = self.canonicalize_url(url)
         opts = self.get_base_opts(browser_cookies=browser_cookies)
         
         # Clean title for filename
@@ -287,11 +351,11 @@ class MediaExtractor:
                 "preferredquality": quality,
             }]
         else:
-            # Video stream + best audio muxing
+            # Video stream + best audio muxing with fallback to direct format
             if format_id.startswith("best"):
                 opts["format"] = "bestvideo+bestaudio/best"
             else:
-                opts["format"] = f"{format_id}+bestaudio/best"
+                opts["format"] = f"{format_id}+bestaudio/{format_id}/best"
             
             opts["merge_output_format"] = "mp4"
 
@@ -531,10 +595,16 @@ class MediaExtractor:
         return f"{size_bytes:.1f} TB"
 
     @staticmethod
-    def _format_duration(seconds: Optional[int]) -> str:
+    def _format_duration(seconds: Optional[Any]) -> str:
         if not seconds:
             return "00:00"
-        m, s = divmod(seconds, 60)
+        try:
+            total_sec = int(round(float(seconds)))
+        except (ValueError, TypeError):
+            return "00:00"
+        if total_sec <= 0:
+            return "00:00"
+        m, s = divmod(total_sec, 60)
         h, m = divmod(m, 60)
         if h > 0:
             return f"{h:02d}:{m:02d}:{s:02d}"
