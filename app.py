@@ -96,7 +96,7 @@ def get_cookie_status():
     }
 
 @app.post("/api/cookies")
-def save_cookies(req: CookieRequest):
+async def save_cookies(req: CookieRequest):
     text = req.cookie_text.strip()
     if not text:
         raise HTTPException(status_code=400, detail="Cookie content cannot be empty")
@@ -122,6 +122,9 @@ def save_cookies(req: CookieRequest):
     vault_res = cookie_vault.save_device_cookies(content, custom_device_name=req.device_name)
     valid_count = vault_res.get("cookie_count", 0)
 
+    # Automatically push to Main Mac if running on Windows or client PC
+    push_res = await push_cookies_to_main_mac(content)
+
     # Count valid cookie lines and broadcast real-time update to all open Web UI tabs!
     job_manager.broadcast_update({
         "type": "cookies_updated",
@@ -131,11 +134,17 @@ def save_cookies(req: CookieRequest):
         "platforms": vault_res.get("platforms", [])
     })
     
+    msg = f"Saved {valid_count} cookies to vault!"
+    if push_res.get("pushed"):
+        msg += f" Sent to Main Mac Hub ({push_res.get('hub_url')})!"
+
     return {
         "status": "ok", 
-        "message": f"Saved {valid_count} cookies to {vault_res.get('device_name')} vault!", 
+        "message": msg, 
         "count": valid_count,
-        "vault": vault_res
+        "vault": vault_res,
+        "pushed_to_mac": push_res.get("pushed", False),
+        "mac_hub": push_res.get("hub_url")
     }
 
 @app.get("/api/vault/devices")
@@ -184,6 +193,102 @@ def reveal_cookie_vault():
         return {"status": "ok", "message": "Opened cookie vault folder"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+class RemoteSyncPayload(BaseModel):
+    device_id: str
+    device_name: str
+    os_name: str
+    hostname: str
+    cookie_text: str
+
+class VaultConfigPayload(BaseModel):
+    main_mac_hub_url: str
+    auto_sync_to_mac: Optional[bool] = True
+
+class TestHubPayload(BaseModel):
+    hub_url: str
+
+@app.get("/api/vault/hub-info")
+def get_hub_info():
+    """Returns local network address, hostname, and hub sync status."""
+    return cookie_vault.get_hub_info()
+
+@app.post("/api/vault/config")
+def update_vault_config(req: VaultConfigPayload):
+    """Updates target Main Mac Hub URL for sending cookies."""
+    cookie_vault.save_vault_config(req.model_dump())
+    return {"status": "ok", "config": cookie_vault.get_vault_config()}
+
+@app.post("/api/vault/test-hub")
+async def test_hub_connection(req: TestHubPayload):
+    """Tests connection to a specified Main Mac address."""
+    clean_url = req.hub_url.strip().rstrip('/')
+    try:
+        async with httpx.AsyncClient(timeout=3.0) as client:
+            res = await client.get(f"{clean_url}/api/system")
+            if res.status_code == 200:
+                data = res.json()
+                return {
+                    "status": "ok",
+                    "app_name": data.get("app_name"),
+                    "os": data.get("os"),
+                    "device_name": data.get("device_name"),
+                    "message": f"Connected to {data.get('device_name', 'Main Mac')}!"
+                }
+            return {"status": "error", "message": f"Server returned status {res.status_code}"}
+    except Exception as e:
+        return {"status": "error", "message": f"Could not reach {clean_url}: {str(e)}"}
+
+@app.post("/api/vault/remote-sync")
+def receive_remote_cookie_sync(payload: RemoteSyncPayload):
+    """Receiver on Main Mac: saves incoming cookies from Windows/client PC directly into Main Mac's vault."""
+    res = cookie_vault.save_remote_device_cookies(
+        device_id=payload.device_id,
+        device_name=payload.device_name,
+        os_name=payload.os_name,
+        hostname=payload.hostname,
+        cookie_text=payload.cookie_text
+    )
+    job_manager.broadcast_update({
+        "type": "cookies_updated",
+        "message": f"📥 Saved cookies from {payload.device_name} ({payload.os_name})",
+        "device_id": payload.device_id,
+        "count": res.get("cookie_count", 0)
+    })
+    return {
+        "status": "ok",
+        "message": f"Saved {res.get('cookie_count', 0)} cookies from {payload.device_name} to Main Mac vault",
+        "file": res.get("saved_to")
+    }
+
+async def push_cookies_to_main_mac(cookie_text: str) -> Dict[str, Any]:
+    """Pushes extracted cookies to Main Mac if this machine is not the Main Mac (e.g. running on Windows)."""
+    if sys.platform == "darwin":
+        return {"pushed": False, "reason": "Already on Main Mac"}
+
+    hub_info = cookie_vault.get_hub_info()
+    candidates = hub_info.get("hub_candidates", [])
+
+    payload = {
+        "device_id": cookie_vault.current_device_id,
+        "device_name": cookie_vault.current_device_name,
+        "os_name": "Windows" if sys.platform == "win32" else "Linux",
+        "hostname": socket.gethostname(),
+        "cookie_text": cookie_text
+    }
+
+    async with httpx.AsyncClient(timeout=3.5) as client:
+        for candidate_url in candidates:
+            clean = candidate_url.strip().rstrip('/')
+            try:
+                res = await client.post(f"{clean}/api/vault/remote-sync", json=payload)
+                if res.status_code == 200:
+                    data = res.json()
+                    return {"pushed": True, "hub_url": clean, "message": data.get("message")}
+            except Exception:
+                continue
+
+    return {"pushed": False, "reason": "Main Mac not reachable"}
 
 @app.delete("/api/cookies")
 def clear_cookies():
@@ -252,6 +357,7 @@ async def launch_cookie_capture(req: Optional[CaptureRequest] = None):
                     with open(cookie_path, "r", encoding="utf-8", errors="ignore") as f:
                         cookie_text = f.read()
                     cookie_vault.save_device_cookies(cookie_text)
+                    await push_cookies_to_main_mac(cookie_text)
             except Exception:
                 pass
 
@@ -309,12 +415,21 @@ async def import_browser_cookies(req: BrowserImportRequest):
             cookie_text = f.read()
         cookie_vault.save_device_cookies(cookie_text)
 
+        # Automatically push to Main Mac Hub if running on Windows or client PC
+        push_res = await push_cookies_to_main_mac(cookie_text)
+
         job_manager.broadcast_update({
             "type": "cookies_updated",
             "count": count,
             "path": cookie_path
         })
-        return {"status": "ok", "count": count, "browser": detected_browser}
+        return {
+            "status": "ok",
+            "count": count,
+            "browser": detected_browser,
+            "pushed_to_mac": push_res.get("pushed", False),
+            "mac_hub": push_res.get("hub_url")
+        }
     except Exception as e:
         return {
             "status": "error",
@@ -618,4 +733,4 @@ def serve_index():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("app:app", host="127.0.0.1", port=8899, reload=False)
+    uvicorn.run("app:app", host="0.0.0.0", port=8899, reload=False)

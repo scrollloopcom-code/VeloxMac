@@ -305,10 +305,14 @@ function setupEventListeners() {
         });
         const data = await res.json();
         if (data.status === 'ok') {
-          showToast(`✅ Successfully imported ${data.count} cookies from ${data.browser}!`);
+          let successMsg = `✅ Successfully imported ${data.count} cookies from ${data.browser}!`;
+          if (data.pushed_to_mac) {
+            successMsg += ` 📡 Sent to Main Mac (${data.mac_hub})!`;
+          }
+          showToast(successMsg);
           if (browserImportStatus) {
             browserImportStatus.className = 'browser-import-status success';
-            browserImportStatus.textContent = `✅ Successfully imported ${data.count} cookies from ${data.browser}`;
+            browserImportStatus.textContent = successMsg;
           }
           checkCookieStatus();
         } else {
@@ -365,6 +369,40 @@ function setupEventListeners() {
       showToast('Failed to clear cookies', 'error');
     }
   });
+
+  const saveHubBtn = document.getElementById('saveHubBtn');
+  const customHubInput = document.getElementById('customHubInput');
+
+  if (saveHubBtn && customHubInput) {
+    saveHubBtn.addEventListener('click', async () => {
+      const url = customHubInput.value.trim();
+      if (!url) return;
+      saveHubBtn.textContent = 'Testing...';
+      try {
+        const testRes = await fetch('/api/vault/test-hub', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ hub_url: url })
+        });
+        const testData = await testRes.json();
+        if (testData.status === 'ok') {
+          showToast(`✅ Connected to ${testData.device_name || 'Main Mac'}!`);
+          await fetch('/api/vault/config', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ main_mac_hub_url: url })
+          });
+          loadHubInfo();
+        } else {
+          showToast(testData.message || 'Could not connect to Main Mac', 'error');
+        }
+      } catch (e) {
+        showToast(`Error: ${e.message}`, 'error');
+      } finally {
+        saveHubBtn.textContent = 'Connect Mac';
+      }
+    });
+  }
 }
 
 // ==========================================================================
@@ -825,6 +863,38 @@ async function checkCookieStatus() {
       if (clearBtn) clearBtn.style.display = 'none';
       const fleetTag = document.getElementById('footerFleetText');
       if (fleetTag) fleetTag.textContent = 'Cookie Vault: Ready';
+    }
+    loadHubInfo();
+  } catch (e) {}
+}
+
+async function loadHubInfo() {
+  try {
+    const res = await fetch('/api/vault/hub-info');
+    const data = await res.json();
+    const hubDot = document.getElementById('hubDot');
+    const hubLabel = document.getElementById('hubLabel');
+    const hubControls = document.getElementById('hubControls');
+    const customHubInput = document.getElementById('customHubInput');
+
+    if (data.is_main_mac) {
+      if (hubDot) {
+        hubDot.style.background = 'var(--accent-green)';
+        hubDot.style.boxShadow = '0 0 6px var(--accent-green)';
+      }
+      if (hubLabel) {
+        hubLabel.innerHTML = `📡 <strong>Main Mac Master Vault Active</strong> &bull; Receiving on <code>${escapeHtml(data.lan_url)}</code>`;
+      }
+      if (hubControls) hubControls.style.display = 'none';
+    } else {
+      // Running on Windows / other client machine
+      if (hubControls) hubControls.style.display = 'flex';
+      if (customHubInput && !customHubInput.value) {
+        customHubInput.value = data.configured_hub_url || '';
+      }
+      if (hubLabel) {
+        hubLabel.innerHTML = `📡 <strong>Sync Destination:</strong> Main Mac Vault (<code>${escapeHtml(data.configured_hub_url)}</code>)`;
+      }
     }
   } catch (e) {}
 }

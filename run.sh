@@ -15,4 +15,4 @@ echo "🌐 UI Dashboard: http://127.0.0.1:8899"
 echo "📁 Download Location: ~/Downloads/LoopCatchDownloads"
 echo "==========================================================="
 
-exec uvicorn app:app --host 127.0.0.1 --port 8899
+exec uvicorn app:app --host 0.0.0.0 --port 8899

@@ -318,3 +318,114 @@ class CookieVaultManager:
         zip_output = os.path.join(self.base_download_dir, "LoopCatch_Cookie_Vault_Backup")
         out_path = shutil.make_archive(zip_output, 'zip', root_dir=self.base_download_dir, base_dir="cookie_vault")
         return out_path
+
+    def get_hub_info(self) -> Dict[str, Any]:
+        """Returns network addresses and hub status for syncing across PCs."""
+        hostname = socket.gethostname()
+        clean_host = hostname.split(".")[0]
+        mdns = f"http://{clean_host}.local:8899"
+        
+        lan_ip = "127.0.0.1"
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.connect(("8.8.8.8", 80))
+            lan_ip = s.getsockname()[0]
+            s.close()
+        except Exception:
+            pass
+        
+        lan_url = f"http://{lan_ip}:8899"
+        is_mac = (sys.platform == "darwin")
+
+        # Load config for custom main mac address if on Windows
+        cfg = self.get_vault_config()
+        configured_hub = cfg.get("main_mac_hub_url") or "http://192.168.8.140:8899"
+
+        return {
+            "is_main_mac": is_mac,
+            "hostname": hostname,
+            "lan_ip": lan_ip,
+            "lan_url": lan_url,
+            "mdns_url": mdns,
+            "configured_hub_url": configured_hub,
+            "hub_candidates": [
+                configured_hub,
+                "http://192.168.8.140:8899",
+                "http://Lahirus-Mac-mini.local:8899",
+                "http://100.99.102.10:8899"
+            ]
+        }
+
+    def get_vault_config(self) -> Dict[str, Any]:
+        if os.path.exists(self.config_file):
+            try:
+                with open(self.config_file, "r", encoding="utf-8") as f:
+                    return json.load(f)
+            except Exception:
+                pass
+        return {
+            "main_mac_hub_url": "http://192.168.8.140:8899",
+            "auto_sync_to_mac": True
+        }
+
+    def save_vault_config(self, cfg: Dict[str, Any]) -> bool:
+        try:
+            with open(self.config_file, "w", encoding="utf-8") as f:
+                json.dump(cfg, f, indent=2)
+            return True
+        except Exception:
+            return False
+
+    def save_remote_device_cookies(
+        self,
+        device_id: str,
+        device_name: str,
+        os_name: str,
+        hostname: str,
+        cookie_text: str
+    ) -> Dict[str, Any]:
+        """Saves cookies pushed from a remote PC (e.g. Windows) directly into this Main Mac vault."""
+        clean_id = re.sub(r'[^a-zA-Z0-9_\-]', '', device_id).lower()
+        if not clean_id:
+            clean_id = f"remote_{int(time.time())}"
+        cookie_filename = f"{clean_id}_cookies.txt"
+        target_path = os.path.join(self.vault_dir, cookie_filename)
+
+        with open(target_path, "w", encoding="utf-8") as f:
+            f.write(cookie_text)
+
+        valid_count, platforms_found = self._scan_cookie_file(target_path)
+        now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        vault_data = {}
+        if os.path.exists(self.metadata_file):
+            try:
+                with open(self.metadata_file, "r", encoding="utf-8") as f:
+                    vault_data = json.load(f)
+            except Exception:
+                vault_data = {}
+
+        devices = vault_data.get("devices", {})
+        devices[clean_id] = {
+            "id": clean_id,
+            "name": device_name or f"Remote ({clean_id})",
+            "os": os_name or "Windows",
+            "hostname": hostname,
+            "cookie_file": cookie_filename,
+            "cookie_count": valid_count,
+            "platforms": platforms_found,
+            "last_synced": now_str,
+            "synced_from_remote": True
+        }
+
+        vault_data["devices"] = devices
+        with open(self.metadata_file, "w", encoding="utf-8") as f:
+            json.dump(vault_data, f, indent=2)
+
+        return {
+            "status": "ok",
+            "saved_to": target_path,
+            "device_id": clean_id,
+            "cookie_count": valid_count,
+            "platforms": platforms_found
+        }

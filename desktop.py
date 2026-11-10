@@ -20,7 +20,7 @@ def is_port_in_use(port: int = 8899) -> bool:
 def start_server():
     import uvicorn
     from app import app
-    uvicorn.run(app, host="127.0.0.1", port=8899, log_level="warning")
+    uvicorn.run(app, host="0.0.0.0", port=8899, log_level="warning")
 
 def main():
     base_dir = os.path.dirname(os.path.abspath(__file__))
