@@ -12,6 +12,12 @@ import sys
 import urllib.request
 import zipfile
 
+# Ensure UTF-8 output on Windows consoles
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+if hasattr(sys.stderr, 'reconfigure'):
+    sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+
 from version import APP_NAME, APP_VERSION
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))

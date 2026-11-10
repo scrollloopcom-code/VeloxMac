@@ -69,6 +69,8 @@ jobs:
           pip install pyinstaller pywebview[edgechromium] uvicorn fastapi yt-dlp httpx pydantic pillow
 
       - name: Build Windows Standalone EXE & Installer
+        env:
+          PYTHONIOENCODING: utf-8
         run: |
           python build_windows.py
 
